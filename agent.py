@@ -193,9 +193,13 @@ MAX_DEPTH = 64
 MAX_PLY = 128
 
 INCREMENT_MS = 500
-OVERHEAD_MS = 120.0
+OVERHEAD_MS = 200.0
 MIN_BUDGET_MS = 5.0
-CHECK_INTERVAL = 128
+# A node costs hundreds of microseconds and time.monotonic() costs well under one, so
+# checking often is nearly free. It bounds how far past the deadline we can run, which
+# on the platform is slower per node than a dev machine: validation showed a 3.5 s move
+# against a 3.1 s budget at CHECK_INTERVAL 128.
+CHECK_INTERVAL = 16
 
 
 class TimeUp(Exception):
