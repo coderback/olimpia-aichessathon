@@ -217,6 +217,10 @@ MATE_THRESHOLD = MATE - 1_000
 MAX_DEPTH = 64
 MAX_PLY = 128
 PASS_GROWTH = 1.5
+FUTILITY_DEPTH = 2
+FUTILITY_MARGIN = (0, 150, 300)
+DELTA_MARGIN = 150
+DELTA_MIN_PIECES = 8
 LMR_MIN_DEPTH = 3
 LMR_MIN_MOVE = 3
 LMR_LATE_MOVE = 6
@@ -406,9 +410,23 @@ class Search:
         found = None
         principal = True
         in_check = board.is_check()
+
+        # Futility. Close to the leaves, a quiet move rarely rescues a position that is
+        # already this far below alpha, so once the static score plus a generous margin
+        # still cannot reach it, quiet moves are skipped. Never while in check, never on
+        # a mate score, and never before at least one move has actually been searched.
+        futile = False
+        if not in_check and depth <= FUTILITY_DEPTH and abs(alpha) < MATE_THRESHOLD:
+            futile = evaluate(board) + FUTILITY_MARGIN[depth] <= alpha
+
+        searched = 0
         for index, move in enumerate(moves):
             quiet = move.promotion is None and not board.is_capture(move)
             board.push(move)
+            if futile and quiet and searched and not board.is_check():
+                board.pop()
+                continue
+            searched += 1
 
             # Late move reduction. The ordering already put the moves worth believing
             # first, so a quiet move this far down the list is unlikely to be best.
@@ -469,6 +487,17 @@ class Search:
 
         captures = sorted(board.generate_legal_captures(), key=lambda m: _mvv_lva(board, m))
         for move in reversed(captures):
+            # Delta pruning. Take the most optimistic view of this capture, that the piece
+            # is won outright for nothing, and if even that does not reach alpha there is
+            # no point searching it. Skipped once the board is nearly bare, where a single
+            # capture swings the game and the optimistic view is not optimistic enough.
+            if board.occupied.bit_count() > DELTA_MIN_PIECES:
+                victim = board.piece_type_at(move.to_square)
+                gain = PIECE_VALUE[victim] if victim is not None else PIECE_VALUE[chess.PAWN]
+                if move.promotion is not None:
+                    gain += PIECE_VALUE[move.promotion]
+                if stand_pat + gain + DELTA_MARGIN <= alpha:
+                    continue
             board.push(move)
             score = -self._quiesce(board, -beta, -alpha)
             board.pop()
