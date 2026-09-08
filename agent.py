@@ -231,7 +231,7 @@ INCREMENT_MS = 500
 OVERHEAD_MS = 200.0
 MIN_BUDGET_MS = 5.0
 PANIC_MS = 100
-# A node costs hundreds of microseconds and time.monotonic() costs well under one, so
+# A node costs hundreds of microseconds and time.perf_counter() costs well under one, so
 # checking often is nearly free. It bounds how far past the deadline we can run, which
 # on the platform is slower per node than a dev machine: validation showed a 3.5 s move
 # against a 3.1 s budget at CHECK_INTERVAL 128.
@@ -296,7 +296,7 @@ class Search:
 
     def _tick(self) -> None:
         self.nodes += 1
-        if self.nodes % CHECK_INTERVAL == 0 and time.monotonic() >= self.deadline:
+        if self.nodes % CHECK_INTERVAL == 0 and time.perf_counter() >= self.deadline:
             raise TimeUp
 
     def ordered(self, board: chess.Board, ply: int, first: chess.Move | None) -> list[chess.Move]:
@@ -328,7 +328,7 @@ class Search:
         principal = True
         self.root_best = None  # what this pass has proved so far, if it does not finish
         for move in self.ordered(board, 0, first):
-            if time.monotonic() >= self.deadline:
+            if time.perf_counter() >= self.deadline:
                 raise TimeUp
             board.push(move)
             if principal:
@@ -542,7 +542,7 @@ def get_move(fen: str, time_left_ms: int) -> str:
     _history.add(_key(board))
 
     budget_s = _budget_ms(time_left_ms, board) / 1000.0
-    started = time.monotonic()
+    started = time.perf_counter()
     search = Search(started + budget_s, _history)
 
     moves = search.ordered(board, 0, None)
@@ -562,10 +562,10 @@ def get_move(fen: str, time_left_ms: int) -> str:
         # Each pass costs a multiple of the one before it. Predicting the next one from the
         # last one measured adapts to the position, where a fixed fraction of the budget
         # stopped early in quiet positions and still overcommitted in sharp ones.
-        elapsed = time.monotonic() - started
+        elapsed = time.perf_counter() - started
         if pass_cost and elapsed + pass_cost * PASS_GROWTH > budget_s:
             break
-        pass_started = time.monotonic()
+        pass_started = time.perf_counter()
         try:
             score, move = search.root(board, depth, best)
         except TimeUp:
@@ -575,7 +575,7 @@ def get_move(fen: str, time_left_ms: int) -> str:
             if search.root_best is not None:
                 best = search.root_best
             break
-        pass_cost = time.monotonic() - pass_started
+        pass_cost = time.perf_counter() - pass_started
         best = move
         if abs(score) >= MATE_THRESHOLD:
             break
@@ -585,6 +585,6 @@ def get_move(fen: str, time_left_ms: int) -> str:
 
 # Warm the search once at import so the first move on the clock pays no start-up cost.
 # Import time has a 90 second budget; a move does not.
-_warm = Search(time.monotonic() + 1.0, set())
+_warm = Search(time.perf_counter() + 1.0, set())
 with contextlib.suppress(TimeUp):
     _warm.root(chess.Board(), 2, chess.Move.from_uci("e2e4"))
