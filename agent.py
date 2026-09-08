@@ -275,6 +275,8 @@ class Search:
         self.history = history
         self.nodes = 0
         self.killers: list[list[chess.Move]] = [[] for _ in range(MAX_PLY)]
+        # quiet moves that caused a cutoff anywhere, scored by how deep the cutoff was
+        self.quiet_history: list[list[int]] = [[0] * 64 for _ in range(64)]
         # One table per move. It carries between deepening passes, which is where most of
         # the gain is, and starts empty each move so a stored score can never have been
         # computed under a shorter game history than the one we now have.
@@ -292,6 +294,8 @@ class Search:
         theirs = board.occupied_co[not board.turn]
         squares = chess.BB_SQUARES
 
+        history = self.quiet_history
+
         def rank(move: chess.Move) -> int:
             if move == first:
                 return 1_000_000
@@ -301,19 +305,27 @@ class Search:
                 return 100_000 + _mvv_lva(board, move)
             if move in killers:
                 return 50_000
-            return 0
+            # a quiet move that has cut elsewhere in this search is worth trying early
+            return min(history[move.from_square][move.to_square], 49_000)
 
         return sorted(board.legal_moves, key=rank, reverse=True)
 
     def root(self, board: chess.Board, depth: int, first: chess.Move) -> tuple[int, chess.Move]:
         alpha = -MATE
         best = first
+        principal = True
         for move in self.ordered(board, 0, first):
             if time.monotonic() >= self.deadline:
                 raise TimeUp
             board.push(move)
-            score = -self._negamax(board, depth - 1, -MATE, -alpha, 1)
+            if principal:
+                score = -self._negamax(board, depth - 1, -MATE, -alpha, 1)
+            else:
+                score = -self._negamax(board, depth - 1, -alpha - 1, -alpha, 1)
+                if score > alpha:  # the narrow window was wrong, so pay for the real one
+                    score = -self._negamax(board, depth - 1, -MATE, -alpha, 1)
             board.pop()
+            principal = False
             if score > alpha:
                 alpha, best = score, move
         return alpha, best
@@ -355,14 +367,26 @@ class Search:
             return -MATE + ply if board.is_check() else 0
 
         found = None
+        principal = True
         for move in moves:
             board.push(move)
-            score = -self._negamax(board, depth - 1, -beta, -alpha, ply + 1)
+            if principal:
+                score = -self._negamax(board, depth - 1, -beta, -alpha, ply + 1)
+            else:
+                # Trust the ordering: assume everything after the first move fails low and
+                # prove it with a one-point window, which is far cheaper. Only a move that
+                # beats alpha costs a full re-search. In a window that is already one point
+                # wide the probe is the real search, so nothing is repeated.
+                score = -self._negamax(board, depth - 1, -alpha - 1, -alpha, ply + 1)
+                if alpha < score < beta:
+                    score = -self._negamax(board, depth - 1, -beta, -alpha, ply + 1)
             board.pop()
+            principal = False
             if score >= beta:
                 # only ask about the capture on a cutoff; asking for every move costs more
                 if not board.is_capture(move):
                     self._remember(move, ply)
+                    self.quiet_history[move.from_square][move.to_square] += depth * depth
                 self.table[key] = (depth, _store_score(beta, ply), LOWER, move)
                 return beta
             if score > alpha:
