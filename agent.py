@@ -202,8 +202,30 @@ MIN_BUDGET_MS = 5.0
 CHECK_INTERVAL = 16
 
 
+EXACT, LOWER, UPPER = 0, 1, 2
+TableEntry = tuple[int, int, int, "chess.Move | None"]
+
+
 class TimeUp(Exception):
     """Raised inside the search when the move budget is gone."""
+
+
+def _store_score(score: int, ply: int) -> int:
+    """Make a mate score independent of where in the tree it was found."""
+    if score >= MATE_THRESHOLD:
+        return score + ply
+    if score <= -MATE_THRESHOLD:
+        return score - ply
+    return score
+
+
+def _load_score(score: int, ply: int) -> int:
+    """Put a stored mate score back into this node, at this distance from the root."""
+    if score >= MATE_THRESHOLD:
+        return score - ply
+    if score <= -MATE_THRESHOLD:
+        return score + ply
+    return score
 
 
 def _mvv_lva(board: chess.Board, move: chess.Move) -> int:
@@ -228,6 +250,10 @@ class Search:
         self.history = history
         self.nodes = 0
         self.killers: list[list[chess.Move]] = [[] for _ in range(MAX_PLY)]
+        # One table per move. It carries between deepening passes, which is where most of
+        # the gain is, and starts empty each move so a stored score can never have been
+        # computed under a shorter game history than the one we now have.
+        self.table: dict[object, TableEntry] = {}
 
     def _tick(self) -> None:
         self.nodes += 1
@@ -270,8 +296,9 @@ class Search:
     def _negamax(self, board: chess.Board, depth: int, alpha: int, beta: int, ply: int) -> int:
         self._tick()
 
+        key = _key(board)
         # a line back to a position from earlier in the game is a draw the referee claims
-        if self.history and _key(board) in self.history:
+        if self.history and key in self.history:
             return 0
         if board.halfmove_clock >= 100:
             return 0
@@ -279,15 +306,30 @@ class Search:
         if chess.popcount(board.occupied) <= 4 and board.is_insufficient_material():
             return 0
 
+        entry = self.table.get(key)
+        best_move = None if entry is None else entry[3]
+        if entry is not None and entry[0] >= depth:
+            score = _load_score(entry[1], ply)
+            flag = entry[2]
+            if flag == EXACT:
+                return score
+            if flag == LOWER:
+                if score >= beta:
+                    return beta
+            elif score <= alpha:
+                return alpha
+
         if depth <= 0:
             if not board.is_check():
                 return self._quiesce(board, alpha, beta)
             depth = 1  # never score a position while in check
 
-        moves = self.ordered(board, ply, None)
+        # the stored move is the best ordering hint there is, even at a shallower depth
+        moves = self.ordered(board, ply, best_move)
         if not moves:
             return -MATE + ply if board.is_check() else 0
 
+        found = None
         for move in moves:
             board.push(move)
             score = -self._negamax(board, depth - 1, -beta, -alpha, ply + 1)
@@ -296,8 +338,17 @@ class Search:
                 # only ask about the capture on a cutoff; asking for every move costs more
                 if not board.is_capture(move):
                     self._remember(move, ply)
+                self.table[key] = (depth, _store_score(beta, ply), LOWER, move)
                 return beta
-            alpha = max(alpha, score)
+            if score > alpha:
+                alpha = score
+                found = move
+        self.table[key] = (
+            depth,
+            _store_score(alpha, ply),
+            EXACT if found is not None else UPPER,
+            found,
+        )
         return alpha
 
     def _quiesce(self, board: chess.Board, alpha: int, beta: int) -> int:
