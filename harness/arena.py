@@ -23,6 +23,7 @@ def main() -> None:
     opponent = arguments.opponent.resolve()
     wins = draws = losses = 0
     terminations: dict[str, int] = {}
+    broken: dict[str, int] = {}
 
     for game in range(arguments.games):
         plays_white = game % 2 == 0
@@ -35,19 +36,25 @@ def main() -> None:
             ply_cap=arguments.ply_cap,
         )
         terminations[outcome.termination] = terminations.get(outcome.termination, 0) + 1
-        if outcome.result == "draw" or outcome.result == "void":
+        undecided = outcome.result == "draw" or outcome.result == "void"
+        if undecided:
             draws += 1
         elif (outcome.result == "white") == plays_white:
             wins += 1
         else:
             losses += 1
+        # a failed termination is only ours when we lost by it, or when both sides failed
+        if outcome.termination in FAILED_TERMINATIONS and (
+            outcome.result == "void"
+            or (not undecided and (outcome.result == "white") != plays_white)
+        ):
+            broken[outcome.termination] = broken.get(outcome.termination, 0) + 1
         print(f"game {game + 1}/{arguments.games}: {outcome.result} by {outcome.termination}")
 
     score = (wins + draws / 2) / arguments.games
     print(f"\n{arguments.agent} vs {arguments.opponent} over {arguments.games} games")
     print(f"+{wins} ={draws} -{losses}, score {score:.1%}")
     print("terminations: " + ", ".join(f"{name} {count}" for name, count in terminations.items()))
-    broken = {name: count for name, count in terminations.items() if name in FAILED_TERMINATIONS}
     if broken:
         raise SystemExit(
             "your agent failed to finish a game: "
