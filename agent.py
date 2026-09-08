@@ -142,6 +142,17 @@ BLACK_SCORE = [
 KING_MG_BLACK = [KING_MIDDLEGAME[MIRROR[square]] for square in range(64)]
 KING_EG_BLACK = [KING_ENDGAME[MIRROR[square]] for square in range(64)]
 
+# how far a square is from the middle four, in king moves along ranks and files
+CENTRE_DISTANCE = [
+    max(3 - chess.square_file(square), chess.square_file(square) - 4, 0)
+    + max(3 - chess.square_rank(square), chess.square_rank(square) - 4, 0)
+    for square in range(64)
+]
+MOP_UP_PHASE = 6
+MOP_UP_MARGIN = 400
+EDGE_WEIGHT = 12
+APPROACH_WEIGHT = 5
+
 
 def evaluate(board: chess.Board) -> int:
     """Static score in centipawns, from the point of view of the side to move.
@@ -181,6 +192,20 @@ def evaluate(board: chess.Board) -> int:
         balance -= (
             KING_MG_BLACK[king] * phase + KING_EG_BLACK[king] * (TOTAL_PHASE - phase)
         ) // TOTAL_PHASE
+
+    # With a decisive edge and almost nothing left, material and placement give the search
+    # no reason to make progress, so it shuffles until the game is drawn. Push the bare
+    # king to the edge and walk our own king towards it.
+    if phase <= MOP_UP_PHASE and not -MOP_UP_MARGIN <= balance <= MOP_UP_MARGIN:
+        strong = chess.WHITE if balance > 0 else chess.BLACK
+        winner = board.king(strong)
+        loser = board.king(not strong)
+        if winner is not None and loser is not None:
+            drive = (
+                CENTRE_DISTANCE[loser] * EDGE_WEIGHT
+                + (14 - chess.square_manhattan_distance(winner, loser)) * APPROACH_WEIGHT
+            )
+            balance += drive if strong == chess.WHITE else -drive
 
     return balance if board.turn == chess.WHITE else -balance
 
