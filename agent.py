@@ -230,6 +230,7 @@ NULL_REDUCTION = 2
 INCREMENT_MS = 500
 OVERHEAD_MS = 200.0
 MIN_BUDGET_MS = 5.0
+PANIC_MS = 100
 # A node costs hundreds of microseconds and time.monotonic() costs well under one, so
 # checking often is nearly free. It bounds how far past the deadline we can run, which
 # on the platform is slower per node than a dev machine: validation showed a 3.5 s move
@@ -548,6 +549,13 @@ def get_move(fen: str, time_left_ms: int) -> str:
     if not moves:
         return "0000"  # the referee ends the game before asking, so this is only a guard
     best = moves[0]
+
+    # Out of clock. One search pass costs about 16 ms however small the budget says it is,
+    # because a board, a move list and one ply have to happen at all, and the referee flags
+    # the moment the elapsed time exceeds the clock rather than the budget. Ordering alone
+    # costs a fraction of a millisecond, so hand back its first move and keep the game.
+    if time_left_ms < PANIC_MS:
+        return best.uci()
 
     pass_cost = 0.0
     for depth in range(1, MAX_DEPTH + 1):
