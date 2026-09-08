@@ -216,6 +216,7 @@ MATE = 30_000
 MATE_THRESHOLD = MATE - 1_000
 MAX_DEPTH = 64
 MAX_PLY = 128
+PASS_GROWTH = 1.5
 NULL_MIN_DEPTH = 3
 NULL_REDUCTION = 2
 
@@ -279,6 +280,7 @@ class Search:
         self.killers: list[list[chess.Move]] = [[] for _ in range(MAX_PLY)]
         # quiet moves that caused a cutoff anywhere, scored by how deep the cutoff was
         self.quiet_history: list[list[int]] = [[0] * 64 for _ in range(64)]
+        self.root_best: chess.Move | None = None
         # One table per move. It carries between deepening passes, which is where most of
         # the gain is, and starts empty each move so a stored score can never have been
         # computed under a shorter game history than the one we now have.
@@ -316,6 +318,7 @@ class Search:
         alpha = -MATE
         best = first
         principal = True
+        self.root_best = None  # what this pass has proved so far, if it does not finish
         for move in self.ordered(board, 0, first):
             if time.monotonic() >= self.deadline:
                 raise TimeUp
@@ -330,6 +333,7 @@ class Search:
             principal = False
             if score > alpha:
                 alpha, best = score, move
+                self.root_best = move
         return alpha, best
 
     def _negamax(
@@ -490,14 +494,25 @@ def get_move(fen: str, time_left_ms: int) -> str:
         return "0000"  # the referee ends the game before asking, so this is only a guard
     best = moves[0]
 
+    pass_cost = 0.0
     for depth in range(1, MAX_DEPTH + 1):
-        # each depth costs several times the last, so do not open one we cannot finish
-        if time.monotonic() - started > budget_s * 0.45:
+        # Each pass costs a multiple of the one before it. Predicting the next one from the
+        # last one measured adapts to the position, where a fixed fraction of the budget
+        # stopped early in quiet positions and still overcommitted in sharp ones.
+        elapsed = time.monotonic() - started
+        if pass_cost and elapsed + pass_cost * PASS_GROWTH > budget_s:
             break
+        pass_started = time.monotonic()
         try:
             score, move = search.root(board, depth, best)
         except TimeUp:
+            # A root move that already beat every move before it at this depth was proved
+            # by a complete search of that move, so it is a better answer than the one the
+            # last finished pass returned. An unfinished pass is not a wasted one.
+            if search.root_best is not None:
+                best = search.root_best
             break
+        pass_cost = time.monotonic() - pass_started
         best = move
         if abs(score) >= MATE_THRESHOLD:
             break
