@@ -217,6 +217,9 @@ MATE_THRESHOLD = MATE - 1_000
 MAX_DEPTH = 64
 MAX_PLY = 128
 PASS_GROWTH = 1.5
+LMR_MIN_DEPTH = 3
+LMR_MIN_MOVE = 3
+LMR_LATE_MOVE = 6
 NULL_MIN_DEPTH = 3
 NULL_REDUCTION = 2
 
@@ -402,8 +405,27 @@ class Search:
 
         found = None
         principal = True
-        for move in moves:
+        in_check = board.is_check()
+        for index, move in enumerate(moves):
+            quiet = move.promotion is None and not board.is_capture(move)
             board.push(move)
+
+            # Late move reduction. The ordering already put the moves worth believing
+            # first, so a quiet move this far down the list is unlikely to be best.
+            # Search it shallower, and only pay full depth if it beats alpha anyway.
+            # Never reduce out of check, into check, or a capture: those are the moves
+            # a shallow search is most likely to misjudge.
+            reduction = 0
+            if (
+                quiet
+                and not principal
+                and depth >= LMR_MIN_DEPTH
+                and index >= LMR_MIN_MOVE
+                and not in_check
+                and not board.is_check()
+            ):
+                reduction = 1 if index < LMR_LATE_MOVE else 2
+
             if principal:
                 score = -self._negamax(board, depth - 1, -beta, -alpha, ply + 1)
             else:
@@ -411,14 +433,18 @@ class Search:
                 # prove it with a one-point window, which is far cheaper. Only a move that
                 # beats alpha costs a full re-search. In a window that is already one point
                 # wide the probe is the real search, so nothing is repeated.
-                score = -self._negamax(board, depth - 1, -alpha - 1, -alpha, ply + 1)
+                score = -self._negamax(
+                    board, depth - 1 - reduction, -alpha - 1, -alpha, ply + 1
+                )
+                if reduction and score > alpha:
+                    # the reduction was wrong about this move, so pay the full depth
+                    score = -self._negamax(board, depth - 1, -alpha - 1, -alpha, ply + 1)
                 if alpha < score < beta:
                     score = -self._negamax(board, depth - 1, -beta, -alpha, ply + 1)
             board.pop()
             principal = False
             if score >= beta:
-                # only ask about the capture on a cutoff; asking for every move costs more
-                if not board.is_capture(move):
+                if quiet:
                     self._remember(move, ply)
                     self.quiet_history[move.from_square][move.to_square] += depth * depth
                 self.table[key] = (depth, _store_score(beta, ply), LOWER, move)
