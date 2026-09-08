@@ -216,6 +216,8 @@ MATE = 30_000
 MATE_THRESHOLD = MATE - 1_000
 MAX_DEPTH = 64
 MAX_PLY = 128
+NULL_MIN_DEPTH = 3
+NULL_REDUCTION = 2
 
 INCREMENT_MS = 500
 OVERHEAD_MS = 200.0
@@ -330,7 +332,15 @@ class Search:
                 alpha, best = score, move
         return alpha, best
 
-    def _negamax(self, board: chess.Board, depth: int, alpha: int, beta: int, ply: int) -> int:
+    def _negamax(
+        self,
+        board: chess.Board,
+        depth: int,
+        alpha: int,
+        beta: int,
+        ply: int,
+        allow_null: bool = True,
+    ) -> int:
         self._tick()
 
         key = _key(board)
@@ -360,6 +370,26 @@ class Search:
             if not board.is_check():
                 return self._quiesce(board, alpha, beta)
             depth = 1  # never score a position while in check
+
+        # Null move: hand the opponent a free move. If the position still beats beta after
+        # that, the real move list will almost certainly beat it too, so cut without
+        # searching. Skipped in check, and skipped when the side to move has nothing but
+        # pawns, because that is where zugzwang lives and having to move is a liability
+        # rather than the free gift this assumes.
+        if (
+            allow_null
+            and depth >= NULL_MIN_DEPTH
+            and not board.is_check()
+            and board.occupied_co[board.turn]
+            & (board.knights | board.bishops | board.rooks | board.queens)
+        ):
+            board.push(chess.Move.null())
+            score = -self._negamax(
+                board, depth - 1 - NULL_REDUCTION, -beta, -beta + 1, ply + 1, False
+            )
+            board.pop()
+            if score >= beta:
+                return beta
 
         # the stored move is the best ordering hint there is, even at a shallower depth
         moves = self.ordered(board, ply, best_move)
