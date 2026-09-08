@@ -8,7 +8,6 @@ import chess.pgn
 from harness.rules import INIT_BUDGET_S, PLY_CAP
 from harness.sandbox import Agent, AgentFailure
 
-PIECE_VALUES = {chess.PAWN: 1, chess.KNIGHT: 3, chess.BISHOP: 3, chess.ROOK: 5, chess.QUEEN: 9}
 RESULT_HEADERS = {"white": "1-0", "black": "0-1", "draw": "1/2-1/2", "void": "*"}
 FAILED_TERMINATIONS = frozenset({"crash", "illegal", "flag", "init", "both_failed"})
 
@@ -60,17 +59,17 @@ def _play(
         if finish is not None:
             return _outcome(board, _decide(finish), finish.termination.name.lower())
         if len(board.move_stack) >= ply_cap:
-            return _outcome(board, _adjudicate(board), "adjudication")
+            return _outcome(board, "draw", "ply_cap")
 
         mover = board.turn
         started_at = time.monotonic()
         try:
             uci = agents[mover].move(board.fen(), int(clock[mover]))
         except AgentFailure as failure:
-            return _outcome(board, _opponent_wins(mover), failure.reason)
+            return _outcome(board, _resolve(board, mover, failure.reason), failure.reason)
         clock[mover] -= (time.monotonic() - started_at) * 1000.0
         if clock[mover] < 0:
-            return _outcome(board, _opponent_wins(mover), "flag")
+            return _outcome(board, _resolve(board, mover, "flag"), "flag")
 
         move = _legal_move(board, uci)
         if move is None:
@@ -105,16 +104,11 @@ def _decide(finish: chess.Outcome) -> Decision:
     return "white" if finish.winner == chess.WHITE else "black"
 
 
-def _adjudicate(board: chess.Board) -> Decision:
-    balance = sum(
-        value * (len(board.pieces(piece, chess.WHITE)) - len(board.pieces(piece, chess.BLACK)))
-        for piece, value in PIECE_VALUES.items()
-    )
-    if balance > 0:
-        return "white"
-    if balance < 0:
-        return "black"
-    return "draw"
+def _resolve(board: chess.Board, mover: chess.Color, reason: str) -> Decision:
+    """Losing on time draws when the other side cannot mate. Every other failure loses."""
+    if reason == "flag" and board.has_insufficient_material(not mover):
+        return "draw"
+    return _opponent_wins(mover)
 
 
 def _outcome(board: chess.Board, result: Result, termination: str) -> Outcome:
