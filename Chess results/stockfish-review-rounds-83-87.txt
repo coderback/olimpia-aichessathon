@@ -1,0 +1,24 @@
+83 Karvaxis v Tobias Carlsen 1-0 (checkmate, 80 plies)
+  Karvaxis               accuracy  87.6%  acpl   55  ?! 6  ? 2  ?? 0 <- us
+  Tobias Carlsen         accuracy  85.6%  acpl   92  ?! 3  ? 3  ?? 2
+    ? 22. Qe2  (best Qg5)  -42 -> -297  6k1/3qb1p1/p2p1n2/R3p3/1rp1P3/2N1Q2r/1PPP1P1P/2B1R1K1 w - - 0 22
+    ? 24. Kg2  (best Ra3)  -8 -> -387  6k1/3qb1p1/p2p4/R2Np3/1rp1P3/7r/1PPPQP1n/2B1R1K1 w - - 0 24
+
+84 Dominated Horses v Karvaxis 1-0 (checkmate, 55 plies)
+  Dominated Horses       accuracy  91.6%  acpl   44  ?! 3  ? 0  ?? 0
+  Karvaxis               accuracy  85.1%  acpl  108  ?! 4  ? 1  ?? 0 <- us
+    ? 17... Nd4  (best h6)  -222 -> -598  r2qr1k1/1p3pbp/p2pbnp1/2p1pnB1/2P1N1PP/P1NP1P2/1P2P1B1/1R1Q1RK1 b - - 0 17
+
+85 The Good Team v Karvaxis 0-1 (checkmate, 283 plies)
+  The Good Team          accuracy  92.8%  acpl   49  ?! 9  ? 2  ?? 0
+  Karvaxis               accuracy  93.6%  acpl   41  ?! 4  ? 1  ?? 0 <- us
+    ? 15... Re8  (best d5)  +376 -> +63  1r1q1rk1/1p2b1p1/p1nppn1p/4p3/P3P1PP/N1N1BP1R/1PP5/R2QK3 b Q - 2 15
+
+86 Karvaxis v Fork 72 0-1 (checkmate, 137 plies)
+  Karvaxis               accuracy  94.6%  acpl   46  ?! 2  ? 0  ?? 0 <- us
+  Fork 72                accuracy  96.7%  acpl   32  ?! 1  ? 0  ?? 0
+
+87 Karvaxis v darKnight 1-0 (checkmate, 46 plies)
+  Karvaxis               accuracy  97.9%  acpl    8  ?! 0  ? 0  ?? 0 <- us
+  darKnight              accuracy  91.2%  acpl   58  ?! 2  ? 0  ?? 0
+
