@@ -75,6 +75,7 @@ used in our rated games (`openings.txt`). Elo figures carry 95% intervals.
 | contempt (D) | `68c63c6` | +44 ±77 vs C (80 games) | **+15 =14 −7 vs C** (36 games, +79 ±116) |
 | soft/hard time limits, 8M table (E) | `7af899e` | −35 ±77 vs D (80 games) | **−10 ±114 vs D** (36 games) — **reverted** |
 | king attack (F) | `e88d0ce` | +16 ±44 vs D (240 games) | **−29 ±114 vs D** (36 games) — **reverted** |
+| check evasion in quiescence (G) | `96f3263` | — | 240-game gate vs D running |
 
 The evaluation terms are the same idea that lost 102 Elo on the slow engine. At depth
 13 they are the largest single gain. The earlier result was a depth artefact, not a
@@ -108,6 +109,35 @@ engine finds the attacking move in one of the three at 3 s. The review is commit
 passed pawn on the seventh) the compiled build reads both the drawing and the losing
 king move as level at depth 21; which one it plays depends on the tree. No endgame
 knowledge beyond the mop-up term exists yet.
+
+**On the ladder.** Rounds 87 and 88 are the first two games by the compiled build, both
+wins by checkmate, and the review agrees with the arena:
+
+| | round 87 | round 88 | the Python engine (83–86) |
+|---|---|---|---|
+| accuracy | 97.9% | 93.4% | 85–95% |
+| centipawn loss per move | 8 | 28 | 46–108 |
+| inaccuracies / mistakes / blunders | 0 / 0 / 0 | 0 / 0 / 0 | 2–6 / 0–2 / 0 |
+| clock left at the end | 90.8 s | 71.9 s | 11.5–59.6 s |
+| init on the ladder machine | 18.4 s | 18.0 s | 0.5 s |
+
+Zero flagged moves in 53 moves of play, where the old engine averaged three or four a
+game. Two games is two games, both as White against weaker opponents, so this is
+consistent with the arena rather than independent confirmation of it.
+
+**Absolute strength.** Everything else here is self-play, which measures what beats us
+rather than what beats the field and gives no absolute number. `harness/spar.py` plays a
+build against Stockfish with `UCI_LimitStrength` set to a known Elo, both sides on the
+same clock. The first brackets were set at 1900 / 2200 / 2500 and the build won its first
+five games across all three, so the handicap was checked directly: Stockfish at 2500 beat
+Stockfish at 1320 four–nil, so the knob works and the brackets were simply too low. They
+are now **2500 / 2850 / 3190** (3190 is Stockfish's maximum).
+
+Read the result as a bracket, not a rating. `UCI_LimitStrength` weakens Stockfish by
+making it choose deliberately inferior moves, which are human-shaped errors that another
+engine punishes far harder than the label implies, and the scale is calibrated against
+human ratings. If the build also beats 3190 the anchor has no ceiling left and a
+node-limited Stockfish would be needed instead.
 
 **Robustness:** every compiled build so far has finished every game it played. Perft
 matches python-chess exactly on ten positions covering castling, en passant, promotions
@@ -213,8 +243,20 @@ deterministic engines from the start position replay the same game.
 charge read 5× slow, and last session's mid-run shutdown was probably the battery. Check
 the charge before trusting any number.
 
-**Sample sizes.** ±80 Elo needs ~50 games, ±40 needs ~200. Node counts and depths are
-not evidence; only games at the right clock decide.
+**Sample sizes, and what they rule out.** ±80 Elo needs ~50 games, ±40 needs ~200.
+A 36-game real-clock gate resolves ±114, which is how E (−10) and F (−29) came to be
+decided on numbers smaller than their own error bars. A 240-game gate resolves ±40 and
+takes four shards about seven hours. **Search parameters — the LMR divisor, null-move R,
+aspiration width, futility margins — are typically worth 10–30 Elo each, which is below
+what we can resolve in the time available, so tuning them individually would be reading
+noise.** Screen many variants at the fast clock, gate only the best one or two.
+
+Node counts and depths are not evidence; only games at the right clock decide.
+
+**Sparring.** `uv run python -m harness.spar <build> --elo 2500 --games 60
+--base-ms 120000 --increment-ms 500` plays a build against Stockfish at a fixed strength
+with both sides on the same clock, and prints the implied rating. Use several brackets at
+once rather than guessing which one is right.
 
 **Reviewing games.** `uv run python -m harness.review "Chess results"` needs Stockfish
 (`winget install Stockfish.Stockfish`; the default path is where winget puts it). Every
@@ -235,6 +277,18 @@ From `aichessathon.com/docs` — authoritative and they change, so re-fetch:
 - Game drawn at 600 plies; flag draws when the other side cannot mate
 - No third-party engine or published network; source a judge can read
 
+**Using an engine off the board is allowed, and this was checked against the live docs
+rather than assumed.** The ban reads "Third party engines are prohibited. That covers
+Stockfish, Lc0, Maia, any wrapper around one and any port or translation of one", and it
+governs what ships; the same page says "training it on positions an existing engine
+labelled is allowed". Generating training labels is the more aggressive use, so analysing
+our games and sparring against Stockfish are plainly inside the line. Verified rather than
+assumed: `agent.zip` holds one file, `agent.py` has no reference to any engine and no
+`subprocess` or `Popen`, and `harness/package.py` ships only `agent.py`, so the two files
+that know Stockfish's path can never reach a submission. The boundary to keep is "port or
+translation": the piece-square tables are the published simplified-evaluation set and the
+search techniques are general chess-programming knowledge, not transcribed code.
+
 ---
 
 ## 7. Where we stand
@@ -248,9 +302,20 @@ on 9 September at 17:01Z: platform init 21.9 s and 27.5 s of the 90 s budget.** 
 uploaded and validated at 17:17Z** (init 25.5 s and 23.0 s) after passing its real-clock
 check on top of C (15–7–14); `main` is D. E was rejected at both clocks and reverted.
 
-Uploads close **11 September 11:00**. **The live build is D**, and `main` is D. E and F
-were rejected at the real clock and reverted. Anything further needs a real-clock gate
-against D before it goes up; otherwise leave it alone and let the ladder play.
+Uploads close **11 September 11:00**; the dashboard caps uploads at **10 per 24 hours**.
+**The live build is D**, and `main` is D. E and F were rejected at the real clock and
+reverted.
+
+Running overnight on 9 September, seven workers at 120 s + 0.5 s:
+
+- **G against D**, four shards, 240 games — the shipping decision at ±40 rather than ±114
+- **Stockfish at 2500 / 2850 / 3190**, three shards — an absolute bracket, and a corpus of
+  losses to an engine that plays nothing like us
+
+In the morning: gate G, read the bracket, and review the Stockfish losses. Whatever those
+losses show outranks parameter tuning, which is below our measurement resolution anyway.
+If nothing resolves cleanly the right answer is to leave D alone — it is gated, validated
+and winning, and an unresolvable +20 is not worth the risk of shipping a regression.
 
 ---
 
