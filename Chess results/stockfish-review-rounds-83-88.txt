@@ -22,3 +22,7 @@
   Karvaxis               accuracy  97.9%  acpl    8  ?! 0  ? 0  ?? 0 <- us
   darKnight              accuracy  91.2%  acpl   58  ?! 2  ? 0  ?? 0
 
+88 Karvaxis v tal 1-0 (checkmate, 60 plies)
+  Karvaxis               accuracy  93.4%  acpl   28  ?! 0  ? 0  ?? 0 <- us
+  tal                    accuracy  89.1%  acpl   85  ?! 1  ? 1  ?? 0
+

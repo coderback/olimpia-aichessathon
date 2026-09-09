@@ -1,4 +1,5 @@
 round,colour,opponent,result,termination,init_s,moves,time_used_s,slowest_s,fastest_s,average_s,clock_left_s,machine,finished_at
+Rated 88,White,tal,Win,Checkmate,18.0,30,63.1,4.5,0.0,2.1,71.9,w-5b139f,2026-09-09T19:23:33.530607+00:00
 Rated 87,White,darKnight,Win,Checkmate,18.4,23,40.7,3.3,0.0,1.8,90.8,w-3269be,2026-09-09T18:25:59.066831+00:00
 Rated 86,White,Fork 72,Loss,Checkmate,0.5,68,136.0,4.0,0.0,2.0,18.0,w-d5046c,2026-09-09T17:26:43.190309+00:00
 Rated 85,Black,The Good Team,Win,Checkmate,0.5,142,179.5,4.1,0.0,1.3,11.5,w-e5344b,2026-09-09T16:30:03.453697+00:00
