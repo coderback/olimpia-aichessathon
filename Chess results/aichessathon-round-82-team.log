@@ -1,0 +1,71 @@
+AI CHESSATHON MATCH LOG
+=======================
+
+MATCH
+  Round          Rated 82
+  Team           Karvaxis
+  Colour         Black
+  Opponent       team
+  Opening        Scotch Game
+  Start FEN      r1bqk2r/pppp1ppp/2n2n2/1B6/1b1NP3/2P5/PP3PPP/RNBQK2R b KQkq - 0 6
+  You moved      First
+  Machine        w-e04a3f
+  Finished       2026-09-09 13:26:37 UTC
+  Match ID       2586c22b-378f-4406-83b2-6dd7c71ccc5b
+
+INIT
+  Ready in       0.5 s
+  Budget         90.0 s
+  Used           1 percent
+
+CLOCK
+  Base           120.0 s plus 0.5 s per move
+  Moves          31
+  Time used      74.5 s
+  Slowest        4.2 s on move 23
+  Fastest        0.0 s on move 31
+  Average        2.4 s
+  Left at end    61.0 s
+
+RESULT
+  Won by checkmate
+  Game lasted 133.0 s
+
+MOVES
+    #  move          time     clock left
+    1  Bc5           2.4 s      118.1 s
+    2  dxc6          2.4 s      116.2 s
+    3  Bb6           2.9 s      113.8 s
+    4  c5            2.4 s      111.9 s
+    5  c4            3.0 s      109.3 s
+    6  Bxd4          1.8 s      108.0 s
+    7  Nxe4          2.3 s      106.2 s
+    8  Nxc3          3.1 s      103.6 s
+    9  Be6           3.3 s      100.8 s
+   10  Qd7           2.5 s       98.8 s
+   11  Bd5           3.4 s       95.9 s
+   12  Bxg2          2.5 s       93.9 s
+   13  Qc6           2.5 s       91.9 s
+   14  Bh3           2.6 s       89.8 s
+   15  Qh1+          1.8 s       88.4 s
+   16  Kf8           2.6 s       86.4 s
+   17  Qxh2+         3.7 s       83.2 s
+   18  Qh1+          3.0 s       80.7 s
+   19  Qf3           3.1 s       78.1 s
+   20  Ke8           2.0 s       76.6 s
+   21  Qf2+          2.7 s       74.4 s
+   22  Bf1+          2.1 s       72.8 s
+   23  Kd8           4.2 s       69.1 s
+   24  Qc2+          2.1 s       67.5 s
+   25  Qe2+          3.3 s       64.6 s
+   26  Bh3+          3.3 s       61.9 s
+   27  Qe7+          2.5 s       59.8 s
+   28  Qf8+          0.7 s       59.6 s
+   29  Qh6+          0.1 s       60.0 s
+   30  Qxg6+         0.0 s       60.5 s
+   31  Re8#          0.0 s       61.0 s
+
+OUTPUT
+  Nothing written to stderr
+
+Email hello@aichessathon.com with this file if anything here is unclear.

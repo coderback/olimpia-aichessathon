@@ -1,0 +1,69 @@
+AI CHESSATHON MATCH LOG
+=======================
+
+MATCH
+  Round          Rated 78
+  Team           Karvaxis
+  Colour         Black
+  Opponent       Stock-ish
+  Opening        London System
+  Start FEN      r1bqk2r/pp3ppp/2nbpn2/1Bpp4/3P1B2/2P1P2N/PP1N1PPP/R2QK2R b KQkq - 3 7
+  You moved      First
+  Machine        w-978b07
+  Finished       2026-09-09 09:25:56 UTC
+  Match ID       aed84363-259c-43d3-89c2-2831a67f6f6b
+
+INIT
+  Ready in       0.5 s
+  Budget         90.0 s
+  Used           1 percent
+
+CLOCK
+  Base           120.0 s plus 0.5 s per move
+  Moves          29
+  Time used      75.6 s
+  Slowest        3.9 s on move 22
+  Fastest        0.0 s on move 29
+  Average        2.6 s
+  Left at end    58.9 s
+
+RESULT
+  Won by checkmate
+  Game lasted 165.6 s
+
+MOVES
+    #  move          time     clock left
+    1  O-O           2.7 s      117.8 s
+    2  Qxd6          2.7 s      115.6 s
+    3  Bd7           2.6 s      113.5 s
+    4  e5            2.7 s      111.3 s
+    5  e4            2.5 s      109.3 s
+    6  Qxc5          2.0 s      107.7 s
+    7  Qxe3+         3.4 s      104.9 s
+    8  h6            3.3 s      102.1 s
+    9  bxc6          3.4 s       99.2 s
+   10  Qb6           2.3 s       97.4 s
+   11  dxe4          3.5 s       94.4 s
+   12  Nxe4          3.5 s       91.5 s
+   13  Qxb2          2.9 s       89.0 s
+   14  Qa2           1.9 s       87.6 s
+   15  Qc4           3.6 s       84.5 s
+   16  Bf5           3.5 s       81.5 s
+   17  Rfd8          2.5 s       79.5 s
+   18  Qxa4          3.1 s       76.9 s
+   19  Re8           2.6 s       74.8 s
+   20  Qb3           3.3 s       72.1 s
+   21  Qxc3          3.7 s       68.8 s
+   22  Rxa7          3.9 s       65.4 s
+   23  Re1           3.1 s       62.8 s
+   24  Kh7           3.6 s       59.7 s
+   25  Rxf1+         2.1 s       58.1 s
+   26  Qe1           1.1 s       57.5 s
+   27  Kxh8          0.0 s       58.0 s
+   28  Bxg4          0.1 s       58.5 s
+   29  Qf2#          0.0 s       58.9 s
+
+OUTPUT
+  Nothing written to stderr
+
+Email hello@aichessathon.com with this file if anything here is unclear.

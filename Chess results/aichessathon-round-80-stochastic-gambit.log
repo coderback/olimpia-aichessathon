@@ -1,0 +1,131 @@
+AI CHESSATHON MATCH LOG
+=======================
+
+MATCH
+  Round          Rated 80
+  Team           Karvaxis
+  Colour         Black
+  Opponent       Stochastic Gambit
+  Opening        Slav Defence
+  Start FEN      rn1qkb1r/pp3ppp/2p1p3/3n1b2/P1BP1B2/2N1PN2/1P3PPP/R2QK2R b KQkq - 0 8
+  You moved      First
+  Machine        w-b23ebd
+  Finished       2026-09-09 11:28:41 UTC
+  Match ID       bd466f97-6380-4f75-99b1-2fcac77d1af6
+
+INIT
+  Ready in       0.5 s
+  Budget         90.0 s
+  Used           1 percent
+
+CLOCK
+  Base           120.0 s plus 0.5 s per move
+  Moves          91
+  Time used      153.9 s
+  Slowest        4.1 s on move 19
+  Fastest        0.0 s on move 91
+  Average        1.7 s
+  Left at end    11.6 s
+
+RESULT
+  Lost by checkmate
+  Game lasted 306.9 s
+
+MOVES
+    #  move          time     clock left
+    1  Qb6           3.3 s      117.2 s
+    2  Bb4           2.5 s      115.3 s
+    3  Nd7           2.7 s      113.1 s
+    4  Nxe5          2.0 s      111.6 s
+    5  Qc5           3.0 s      109.1 s
+    6  cxd5          2.8 s      106.8 s
+    7  O-O           2.4 s      104.9 s
+    8  Qa5           1.6 s      103.8 s
+    9  f6            1.9 s      102.4 s
+   10  Rxf6          2.4 s      100.5 s
+   11  Rxa7          2.3 s       98.7 s
+   12  e5            2.8 s       96.4 s
+   13  exd4          3.2 s       93.7 s
+   14  d3            3.9 s       90.3 s
+   15  Rg6           2.2 s       88.6 s
+   16  Rxg2+         3.6 s       85.5 s
+   17  Be4+          4.0 s       82.0 s
+   18  Bxd5          3.0 s       79.5 s
+   19  Bc6           4.1 s       75.9 s
+   20  b6            3.5 s       72.9 s
+   21  Kf7           2.9 s       70.5 s
+   22  bxa5          4.0 s       66.9 s
+   23  Rd7           3.8 s       63.6 s
+   24  Rd5+          3.6 s       60.5 s
+   25  d2            2.3 s       58.6 s
+   26  Rxd2          2.4 s       56.7 s
+   27  Rxf2+         2.3 s       54.9 s
+   28  Rxb2          2.5 s       52.9 s
+   29  Kg6           2.0 s       51.4 s
+   30  Kf7           2.5 s       49.4 s
+   31  Kg6           2.0 s       47.9 s
+   32  Rh2           2.8 s       45.6 s
+   33  Kh5           2.3 s       43.8 s
+   34  Rg2           1.2 s       43.1 s
+   35  Rg3           2.5 s       41.1 s
+   36  Kxh4          1.7 s       39.9 s
+   37  Kh5           1.9 s       38.6 s
+   38  Rg1           1.7 s       37.4 s
+   39  Rf1+          2.2 s       35.7 s
+   40  Kg6           2.0 s       34.2 s
+   41  Rf6           1.9 s       32.8 s
+   42  Rf2           1.9 s       31.4 s
+   43  Rf7           1.8 s       30.0 s
+   44  Rb7           1.4 s       29.1 s
+   45  Rd7           1.1 s       28.6 s
+   46  h6            1.6 s       27.5 s
+   47  Rd8           1.2 s       26.8 s
+   48  Re8+          1.6 s       25.7 s
+   49  Rb8           1.1 s       25.1 s
+   50  Rb5+          1.0 s       24.7 s
+   51  Rb4+          1.2 s       23.9 s
+   52  Rb8           0.8 s       23.7 s
+   53  Kf5           1.3 s       22.8 s
+   54  Kg5           1.2 s       22.1 s
+   55  Rb5+          1.3 s       21.3 s
+   56  Re5           1.1 s       20.6 s
+   57  Re4           0.8 s       20.3 s
+   58  Re1           1.1 s       19.7 s
+   59  Rd1+          0.8 s       19.4 s
+   60  Re1           1.2 s       18.8 s
+   61  Rxe8          1.0 s       18.3 s
+   62  Kf6           0.7 s       18.1 s
+   63  Kf7           0.9 s       17.8 s
+   64  h5            0.8 s       17.5 s
+   65  g6            0.8 s       17.2 s
+   66  Kf6           1.1 s       16.7 s
+   67  Kg7           1.0 s       16.1 s
+   68  g5            0.9 s       15.7 s
+   69  h4            0.6 s       15.6 s
+   70  h3            0.8 s       15.3 s
+   71  h2            0.8 s       15.0 s
+   72  Kf7           0.8 s       14.7 s
+   73  Ke7           0.9 s       14.3 s
+   74  Kd7           0.9 s       13.9 s
+   75  Kc6           0.6 s       13.8 s
+   76  Kb5           0.9 s       13.4 s
+   77  Kb6           0.8 s       13.1 s
+   78  Kb7           0.8 s       12.8 s
+   79  Kb8           0.6 s       12.7 s
+   80  Kc7           0.8 s       12.4 s
+   81  Kb6           0.8 s       12.1 s
+   82  Kb5           0.6 s       12.0 s
+   83  Ka6           0.7 s       11.8 s
+   84  Ka5           0.8 s       11.5 s
+   85  Ka4           0.7 s       11.3 s
+   86  Ka3           0.6 s       11.2 s
+   87  Ka2           0.7 s       11.0 s
+   88  Ka3           0.7 s       10.8 s
+   89  Ka2           0.7 s       10.6 s
+   90  Ka1           0.0 s       11.1 s
+   91  Ka2           0.0 s       11.6 s
+
+OUTPUT
+  Nothing written to stderr
+
+Email hello@aichessathon.com with this file if anything here is unclear.

@@ -1,4 +1,11 @@
 round,colour,opponent,result,termination,init_s,moves,time_used_s,slowest_s,fastest_s,average_s,clock_left_s,machine,finished_at
+Rated 82,Black,team,Win,Checkmate,0.5,31,74.5,4.2,0.0,2.4,61.0,w-e04a3f,2026-09-09T13:26:37.052385+00:00
+Rated 81,White,Clanfinn,Win,Checkmate,0.5,66,133.8,3.7,0.0,2.0,19.2,w-7e09b1,2026-09-09T12:31:50.005337+00:00
+Rated 80,Black,Stochastic Gambit,Loss,Checkmate,0.5,91,153.9,4.1,0.0,1.7,11.6,w-b23ebd,2026-09-09T11:28:41.089329+00:00
+Rated 79,White,IDK,Loss,Checkmate,0.5,54,124.1,3.8,0.0,2.3,22.9,w-978b07,2026-09-09T10:25:28.904338+00:00
+Rated 78,Black,Stock-ish,Win,Checkmate,0.5,29,75.6,3.9,0.0,2.6,58.9,w-978b07,2026-09-09T09:25:56.661032+00:00
+Rated 77,White,Pawxn,Win,Checkmate,0.5,60,126.3,4.1,0.0,2.1,23.7,w-5b139f,2026-09-09T08:31:04.667535+00:00
+Rated 76,Black,404 Not Found,Loss,Checkmate,0.5,64,131.2,4.2,0.0,2.1,20.8,w-f11554,2026-09-09T07:27:43.696577+00:00
 Rated 75,White,berserker,Loss,Checkmate,0.6,35,85.3,3.9,0.0,2.4,52.2,w-14b4d5,2026-09-08T21:23:09.051643+00:00
 Rated 74,Black,Sassori,Win,Checkmate,0.6,68,136.7,3.9,0.0,2.0,17.3,w-2118a6,2026-09-08T20:28:36.765477+00:00
 Rated 73,Black,Bblue,Draw,Threefold repetition,0.5,53,124.7,4.0,1.1,2.4,21.8,w-4e0f8c,2026-09-08T19:28:35.3077+00:00
