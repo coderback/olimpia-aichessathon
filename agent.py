@@ -219,6 +219,11 @@ MAX_PLY = 128
 PASS_GROWTH = 1.5
 FUTILITY_DEPTH = 2
 FUTILITY_MARGIN = (0, 150, 300)
+REVERSE_DEPTH = 3
+REVERSE_MARGIN = 120
+LMP_DEPTH = 3
+LMP_COUNT = (0, 8, 14, 22)
+SHALLOW_DEPTH = 3
 DELTA_MARGIN = 150
 DELTA_MIN_PIECES = 8
 LMR_MIN_DEPTH = 3
@@ -412,17 +417,51 @@ class Search:
         principal = True
         in_check = board.is_check()
 
-        # Futility. Close to the leaves, a quiet move rarely rescues a position that is
-        # already this far below alpha, so once the static score plus a generous margin
-        # still cannot reach it, quiet moves are skipped. Never while in check, never on
-        # a mate score, and never before at least one move has actually been searched.
+        # A node searched with a window wider than one point is on the principal
+        # variation: it is the line we intend to play, not a bound being proved. The
+        # shallow prunings below discard moves on a guess, which is affordable when
+        # proving a bound and ruinous on the line itself.
+        proving_a_bound = beta - alpha == 1
+
+        # One static score serves every shallow test below, so it is taken once.
         futile = False
-        if not in_check and depth <= FUTILITY_DEPTH and abs(alpha) < MATE_THRESHOLD:
-            futile = evaluate(board) + FUTILITY_MARGIN[depth] <= alpha
+        if not in_check and depth <= SHALLOW_DEPTH and abs(beta) < MATE_THRESHOLD:
+            static = evaluate(board)
+
+            # Reverse futility. The static score is so far above beta that handing the
+            # opponent a whole margin still leaves this node winning, so it will fail
+            # high on almost anything and is not worth searching.
+            if (
+                proving_a_bound
+                and depth <= REVERSE_DEPTH
+                and static - REVERSE_MARGIN * depth >= beta
+            ):
+                return beta
+
+            # Futility. A quiet move rarely rescues a position already this far below
+            # alpha, so once the static score plus a generous margin still cannot reach
+            # it, quiet moves are skipped.
+            if depth <= FUTILITY_DEPTH and abs(alpha) < MATE_THRESHOLD:
+                futile = static + FUTILITY_MARGIN[depth] <= alpha
 
         searched = 0
         for index, move in enumerate(moves):
             quiet = move.promotion is None and not board.is_capture(move)
+
+            # Late move pruning. Near the leaves the ordering has already been trusted
+            # enough to reduce these; past a count they are not worth making at all.
+            # Tested before the move is played, so it saves the push as well.
+            if (
+                quiet
+                and searched
+                and proving_a_bound
+                and not in_check
+                and depth <= LMP_DEPTH
+                and index >= LMP_COUNT[depth]
+                and abs(alpha) < MATE_THRESHOLD
+            ):
+                continue
+
             board.push(move)
             if futile and quiet and searched and not board.is_check():
                 board.pop()
