@@ -407,6 +407,14 @@ NULL_DEEP_DEPTH = 6
 ASPIRATION = 40
 ASPIRATION_DEPTH = 4
 HISTORY_LIMIT = 16_384
+# Pruning that acts on a guess is confined to nodes proving a bound, never the line we
+# mean to play. Applied everywhere it measured -178 elo; guarded it measured +127.
+RFP_DEPTH = 6
+RFP_MARGIN = 120
+LMP_DEPTH = 4
+LMP_COUNT = np.array([0, 5, 8, 13, 20], dtype=np.int64)
+IIR_DEPTH = 4
+TT_SLACK = 2
 CHECK_INTERVAL = 1023  # nodes between clock reads, as a mask
 
 EXACT, LOWER, UPPER = 0, 1, 2
@@ -814,6 +822,11 @@ def evaluate(bb, st):  # type: ignore[no-untyped-def]
         drive = CENTRE_DISTANCE[loser] * EDGE_WEIGHT + (14 - distance) * APPROACH_WEIGHT
         balance += drive if balance > 0 else -drive
 
+    # A score that has not been converted for many moves is worth less, and drifts
+    # towards the draw the fifty-move rule will make of it. That gives the stronger side
+    # a reason to make progress rather than shuffle.
+    balance -= balance * st[HALFMOVE] // 200
+
     return balance if st[SIDE] == WHITE else -balance
 
 
@@ -850,6 +863,9 @@ def load_score(score, ply):  # type: ignore[no-untyped-def]
 @njit(void(U64, uint64, int64, int64, int64, int64), cache=False)
 def tt_store(tt, key, depth, score, flag, move):  # type: ignore[no-untyped-def]
     slot = int64(key & TT_MASK) << 1
+    # a deeper result for another position keeps its slot unless this one is nearly as deep
+    if tt[slot] != key and int64((tt[slot + 1] >> uint64(16)) & uint64(127)) > depth + TT_SLACK:
+        return
     tt[slot] = key
     tt[slot + 1] = (
         uint64(score + SCORE_BIAS)
@@ -1007,6 +1023,22 @@ def negamax(bb, st, stack, ml, tt, hh, depth, alpha, beta, ply, allow_null, dead
         return quiesce(bb, st, stack, ml, tt, hh, alpha, beta, ply, deadline)
     pv_node = beta - alpha > 1
 
+    static = 0
+    if not in_check:
+        static = evaluate(bb, st)
+        # Reverse futility. A position this far above beta with the move in hand fails
+        # high on almost anything, so do not search it.
+        if (
+            not pv_node
+            and depth <= RFP_DEPTH
+            and beta < MATE_THRESHOLD
+            and static - RFP_MARGIN * depth >= beta
+        ):
+            return beta
+    # no table move means the ordering here is guesswork; a ply less keeps it cheap
+    if depth >= IIR_DEPTH and table_move == 0:
+        depth -= 1
+
     # Null move: hand the opponent a free move. If the position still beats beta after
     # that, the real move list will almost certainly beat it too, so cut without
     # searching. Skipped in check, and skipped when the side to move has nothing but
@@ -1040,7 +1072,10 @@ def negamax(bb, st, stack, ml, tt, hh, depth, alpha, beta, ply, allow_null, dead
     # a mate score, and never before at least one move has actually been searched.
     futile = False
     if not in_check and depth <= FUTILITY_DEPTH and abs(alpha) < MATE_THRESHOLD:
-        futile = evaluate(bb, st) + FUTILITY_MARGIN[depth] <= alpha
+        futile = static + FUTILITY_MARGIN[depth] <= alpha
+    # Late move pruning. Near the leaves, once this many quiet moves have been searched
+    # without beating alpha, the rest are skipped rather than reduced.
+    prune_late = not pv_node and not in_check and depth <= LMP_DEPTH
 
     best_move = 0
     flag = UPPER
@@ -1053,7 +1088,12 @@ def negamax(bb, st, stack, ml, tt, hh, depth, alpha, beta, ply, allow_null, dead
             continue
         legal += 1
         gives_check = is_attacked(bb, king_square(bb, side ^ 1), side)
-        if futile and quiet and searched and not gives_check:
+        if (
+            quiet
+            and searched
+            and not gives_check
+            and (futile or (prune_late and searched >= LMP_COUNT[depth]))
+        ):
             unmake_move(bb, st, stack, row)
             continue
         searched += 1
