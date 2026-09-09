@@ -1,6 +1,8 @@
 import argparse
 from pathlib import Path
 
+import chess
+
 from harness.referee import FAILED_TERMINATIONS, play_match
 from harness.rules import PLY_CAP
 from harness.sandbox import local
@@ -17,7 +19,19 @@ def main() -> None:
     parser.add_argument("--base-ms", type=int, default=FAST_BASE_MS)
     parser.add_argument("--increment-ms", type=int, default=FAST_INCREMENT_MS)
     parser.add_argument("--ply-cap", type=int, default=PLY_CAP)
+    parser.add_argument(
+        "--openings",
+        type=Path,
+        help="file of FENs, one per line; each is played twice with colours swapped",
+    )
+    parser.add_argument(
+        "--start", type=int, default=0, help="index of the first game, so shards differ"
+    )
     arguments = parser.parse_args()
+    openings = [chess.STARTING_FEN]
+    if arguments.openings:
+        lines = arguments.openings.read_text().splitlines()
+        openings = [line.strip() for line in lines if line.strip() and not line.startswith("#")]
 
     agent = arguments.agent.resolve()
     opponent = arguments.opponent.resolve()
@@ -25,8 +39,9 @@ def main() -> None:
     terminations: dict[str, int] = {}
     broken: dict[str, int] = {}
 
-    for game in range(arguments.games):
+    for game in range(arguments.start, arguments.start + arguments.games):
         plays_white = game % 2 == 0
+        start_fen = openings[(game // 2) % len(openings)]
         white, black = (agent, opponent) if plays_white else (opponent, agent)
         outcome = play_match(
             local(white),
@@ -34,6 +49,7 @@ def main() -> None:
             arguments.base_ms,
             arguments.increment_ms,
             ply_cap=arguments.ply_cap,
+            start_fen=start_fen,
         )
         terminations[outcome.termination] = terminations.get(outcome.termination, 0) + 1
         undecided = outcome.result == "draw" or outcome.result == "void"
@@ -49,7 +65,7 @@ def main() -> None:
             or (not undecided and (outcome.result == "white") != plays_white)
         ):
             broken[outcome.termination] = broken.get(outcome.termination, 0) + 1
-        print(f"game {game + 1}/{arguments.games}: {outcome.result} by {outcome.termination}")
+        print(f"game {game + 1}: {outcome.result} by {outcome.termination}", flush=True)
 
     score = (wins + draws / 2) / arguments.games
     print(f"\n{arguments.agent} vs {arguments.opponent} over {arguments.games} games")
