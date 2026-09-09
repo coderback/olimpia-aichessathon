@@ -72,8 +72,8 @@ used in our rated games (`openings.txt`). Elo figures carry 95% intervals.
 | search tuned for depth 13 (A) | `c9a9f2b` | **+98 ±79** vs nb1 (80 games) | — |
 | non-PV pruning, IIR, fifty-move drift (B) | `91cf8e6` | +41 ±78 vs A (77 games) | — |
 | evaluation terms (C) | `f7cd53d` | **+167 ±88** vs B (74 games) | **+31 =4 −1 vs nb1** (36 games, +417 ±205) |
-| contempt (D) | `be8e53b` | +44 ±77 vs C (80 games) | **+15 =14 −7 vs C** (36 games, +79 ±116) |
-| soft/hard time limits, 8M table (E) | `792ea0b` | −45 ±78 vs D (78 games) | check running vs D |
+| contempt (D) | `68c63c6` | +44 ±77 vs C (80 games) | **+15 =14 −7 vs C** (36 games, +79 ±116) |
+| soft/hard time limits, 8M table (E) | `7af899e` | −45 ±78 vs D (78 games) | check running vs D |
 
 The evaluation terms are the same idea that lost 102 Elo on the slow engine. At depth
 13 they are the largest single gain. The earlier result was a depth artefact, not a
