@@ -25,6 +25,7 @@ played, so a line that returns to one of them scores as the draw the referee wil
 # The compiled functions take numba array types mypy cannot follow; everything else is checked.
 
 import contextlib
+import math
 import time
 
 import chess
@@ -393,10 +394,19 @@ FUTILITY_MARGIN = np.array([0, 150, 300], dtype=np.int64)
 DELTA_MARGIN = 150
 DELTA_MIN_PIECES = 8
 LMR_MIN_DEPTH = 3
-LMR_MIN_MOVE = 3
-LMR_LATE_MOVE = 6
+LMR_MIN_MOVE = 2
+# how much shallower a late quiet move is searched, by depth and by its place in the list
+LMR_TABLE = np.zeros((64, 64), dtype=np.int64)
+for _depth in range(1, 64):
+    for _index in range(1, 64):
+        LMR_TABLE[_depth, _index] = int(0.75 + math.log(_depth) * math.log(_index) / 2.25)
 NULL_MIN_DEPTH = 3
 NULL_REDUCTION = 2
+NULL_REDUCTION_DEEP = 3
+NULL_DEEP_DEPTH = 6
+ASPIRATION = 40
+ASPIRATION_DEPTH = 4
+HISTORY_LIMIT = 16_384
 CHECK_INTERVAL = 1023  # nodes between clock reads, as a mask
 
 EXACT, LOWER, UPPER = 0, 1, 2
@@ -873,9 +883,9 @@ def score_moves(st, ml, hh, ply, count, first):  # type: ignore[no-untyped-def]
         elif move == hh[KILLER_BASE + 2 * ply] or move == hh[KILLER_BASE + 2 * ply + 1]:
             score = 50_000
         else:
-            score = hh[HISTORY_BASE + side * 4096 + (move & 63) * 64 + ((move >> 6) & 63)]
-            if score > 49_000:
-                score = 49_000
+            score = HISTORY_LIMIT + hh[
+                HISTORY_BASE + side * 4096 + (move & 63) * 64 + ((move >> 6) & 63)
+            ]
         ml[ply, LIST_WIDTH + i] = score
 
 
@@ -891,6 +901,12 @@ def pick(ml, ply, i, count):  # type: ignore[no-untyped-def]
         ml[ply, best], ml[ply, LIST_WIDTH + best] = ml[ply, i], ml[ply, LIST_WIDTH + i]
         ml[ply, i], ml[ply, LIST_WIDTH + i] = move, score
     return int64(ml[ply, i])
+
+
+@njit(void(I64, int64, int64, int64), cache=False)
+def history_credit(hh, side, move, bonus):  # type: ignore[no-untyped-def]
+    index = HISTORY_BASE + side * 4096 + (move & 63) * 64 + ((move >> 6) & 63)
+    hh[index] += bonus - hh[index] * abs(bonus) // HISTORY_LIMIT
 
 
 @njit(boolean(I64, float64), cache=False)
@@ -985,10 +1001,11 @@ def negamax(bb, st, stack, ml, tt, hh, depth, alpha, beta, ply, allow_null, dead
 
     side = st[SIDE]
     in_check = is_attacked(bb, king_square(bb, side), side ^ 1)
+    if in_check:
+        depth += 1  # a forcing line is searched a ply deeper, and never scored while in check
     if depth <= 0:
-        if not in_check:
-            return quiesce(bb, st, stack, ml, tt, hh, alpha, beta, ply, deadline)
-        depth = 1  # never score a position while in check
+        return quiesce(bb, st, stack, ml, tt, hh, alpha, beta, ply, deadline)
+    pv_node = beta - alpha > 1
 
     # Null move: hand the opponent a free move. If the position still beats beta after
     # that, the real move list will almost certainly beat it too, so cut without
@@ -1002,9 +1019,10 @@ def negamax(bb, st, stack, ml, tt, hh, depth, alpha, beta, ply, allow_null, dead
         and not in_check
         and (bb[base + KNIGHT] | bb[base + BISHOP] | bb[base + ROOK] | bb[base + QUEEN])
     ):
+        reduction = NULL_REDUCTION_DEEP if depth >= NULL_DEEP_DEPTH else NULL_REDUCTION
         make_null(bb, st, stack, row)
         score = -negamax(
-            bb, st, stack, ml, tt, hh, depth - 1 - NULL_REDUCTION, -beta, -beta + 1,
+            bb, st, stack, ml, tt, hh, depth - 1 - reduction, -beta, -beta + 1,
             ply + 1, False, deadline,
         )
         unmake_null(bb, st, stack, row)
@@ -1054,7 +1072,10 @@ def negamax(bb, st, stack, ml, tt, hh, depth, alpha, beta, ply, allow_null, dead
             and not in_check
             and not gives_check
         ):
-            reduction = 1 if i < LMR_LATE_MOVE else 2
+            reduction = LMR_TABLE[min(depth, 63), min(i, 63)]
+            if pv_node:
+                reduction -= 1  # the line we mean to play deserves more of the depth
+            reduction = max(0, min(reduction, depth - 1))
 
         if searched == 1:
             score = -negamax(
@@ -1085,9 +1106,14 @@ def negamax(bb, st, stack, ml, tt, hh, depth, alpha, beta, ply, allow_null, dead
                 if hh[KILLER_BASE + 2 * ply] != move:
                     hh[KILLER_BASE + 2 * ply + 1] = hh[KILLER_BASE + 2 * ply]
                     hh[KILLER_BASE + 2 * ply] = move
-                hh[HISTORY_BASE + side * 4096 + (move & 63) * 64 + ((move >> 6) & 63)] += (
-                    depth * depth
-                )
+                # The cutoff move is rewarded and the quiet moves tried before it are
+                # penalised, each pulled towards the limit so old evidence fades.
+                bonus = min(depth * depth, 400)
+                history_credit(hh, side, move, bonus)
+                for j in range(i):
+                    earlier = int64(ml[ply, j])
+                    if not earlier & TACTICAL:
+                        history_credit(hh, side, earlier, -bonus)
             tt_store(tt, key, depth, store_score(beta, ply), LOWER, move)
             return beta
         if score > alpha:
@@ -1101,14 +1127,16 @@ def negamax(bb, st, stack, ml, tt, hh, depth, alpha, beta, ply, allow_null, dead
     return alpha
 
 
-@njit(types.UniTuple(int64, 2)(*SEARCH_ARGS, int64, int64, float64), cache=False)
-def search_root(bb, st, stack, ml, tt, hh, depth, first, deadline):  # type: ignore[no-untyped-def]
-    """One deepening pass. Returns the score and move; ROOT_BEST tracks the pass as it goes."""
+@njit(
+    types.UniTuple(int64, 2)(*SEARCH_ARGS, int64, int64, int64, int64, float64), cache=False
+)
+def search_root(bb, st, stack, ml, tt, hh, depth, first, alpha, beta, deadline):  # type: ignore[no-untyped-def]
+    """One deepening pass inside a window. Returns the score and move; ROOT_BEST tracks the
+    pass as it goes."""
     st[ROOT_BEST] = 0
     row = st[ROOT]
     count = generate(bb, st, ml, 0, False)
     score_moves(st, ml, hh, 0, count, first)
-    alpha = -MATE
     best = first
     legal = 0
     for i in range(count):
@@ -1117,25 +1145,27 @@ def search_root(bb, st, stack, ml, tt, hh, depth, first, deadline):  # type: ign
             continue
         legal += 1
         if legal == 1:
-            score = -negamax(bb, st, stack, ml, tt, hh, depth - 1, -MATE, -alpha, 1, True, deadline)
+            score = -negamax(bb, st, stack, ml, tt, hh, depth - 1, -beta, -alpha, 1, True, deadline)
         else:
             score = -negamax(
                 bb, st, stack, ml, tt, hh, depth - 1, -alpha - 1, -alpha, 1, True, deadline
             )
             if score > alpha and not st[ABORT]:  # the narrow window was wrong, pay for the real one
                 score = -negamax(
-                    bb, st, stack, ml, tt, hh, depth - 1, -MATE, -alpha, 1, True, deadline
+                    bb, st, stack, ml, tt, hh, depth - 1, -beta, -alpha, 1, True, deadline
                 )
         unmake_move(bb, st, stack, row)
         if st[ABORT]:
             break
-        if score > alpha or legal == 1:
+        if score > alpha:
             alpha = score
             best = move
             # a move proved best so far by a complete search is a better answer than the
             # last finished pass gave, even if this pass never finishes
             st[ROOT_BEST] = move
             st[ROOT_SCORE] = score
+            if score >= beta:
+                break
     return alpha, best
 
 
@@ -1216,9 +1246,12 @@ class Engine:
         st[NODES] = 0
         st[ABORT] = 0
         st[MAX_NODES] = max_nodes
-        self.hh[:] = 0
+        # killers belong to one search; history carries over, faded, as ordering advice
+        self.hh[:HISTORY_BASE] = 0
+        self.hh[HISTORY_BASE:] //= 2
 
         best = 0
+        score = 0
         pass_cost = 0.0
         growth = 2.0
         started = time.perf_counter()
@@ -1229,13 +1262,29 @@ class Engine:
             if pass_cost and elapsed + pass_cost * growth > deadline - started:
                 break
             pass_started = time.perf_counter()
-            score, move = search_root(
-                self.bb, st, stack, self.ml, self.tt, self.hh, depth, best, deadline
-            )
+            # Aspiration: search in a narrow window around the last score, which cuts off
+            # far more, and widen only when the score lands outside it.
+            window = ASPIRATION
+            alpha, beta = -MATE, MATE
+            if depth >= ASPIRATION_DEPTH:
+                alpha, beta = score - window, score + window
+            while True:
+                found, move = search_root(
+                    self.bb, st, stack, self.ml, self.tt, self.hh, depth, best, alpha, beta,
+                    deadline,
+                )
+                if st[ABORT] or alpha < found < beta:
+                    break
+                window *= 2
+                if found <= alpha:
+                    alpha = max(-MATE, alpha - window)
+                else:
+                    beta = min(MATE, beta + window)
             if st[ABORT]:
                 if st[ROOT_BEST]:
                     best = int(st[ROOT_BEST])
                 break
+            score = int(found)
             cost = time.perf_counter() - pass_started
             if pass_cost:
                 growth = min(4.0, max(1.5, cost / pass_cost))
