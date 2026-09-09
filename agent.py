@@ -383,6 +383,45 @@ MOP_UP_MARGIN = 400
 EDGE_WEIGHT = 12
 APPROACH_WEIGHT = 5
 
+# Terms beyond material and placement, each with a middlegame and an endgame weight. The
+# values are about half of what the textbooks give: the first attempt at these, on the
+# slow engine, lost 102 elo, and a search that sees this deep needs less help from them.
+FILE_MASK = np.array([FILE_A << np.uint64(f) for f in range(8)], dtype=np.uint64)
+NEIGHBOUR_FILES = np.array(
+    [
+        (FILE_MASK[f - 1] if f > 0 else 0) | (FILE_MASK[f + 1] if f < 7 else 0)
+        for f in range(8)
+    ],
+    dtype=np.uint64,
+)
+# squares a pawn must pass through, on its own and the neighbouring files
+PASSED_MASK = np.zeros((2, 64), dtype=np.uint64)
+for _square in range(64):
+    _file, _rank = _square & 7, _square >> 3
+    _files = int(FILE_MASK[_file] | NEIGHBOUR_FILES[_file])
+    _ahead_white = sum(1 << (r * 8 + f) for r in range(_rank + 1, 8) for f in range(8))
+    _ahead_black = sum(1 << (r * 8 + f) for r in range(_rank) for f in range(8))
+    PASSED_MASK[WHITE, _square] = _files & _ahead_white
+    PASSED_MASK[BLACK, _square] = _files & _ahead_black
+# the three squares in front of a king, where its pawn shelter lives
+SHIELD_MASK = np.zeros((2, 64), dtype=np.uint64)
+for _square in range(64):
+    _file, _rank = _square & 7, _square >> 3
+    for _df in (-1, 0, 1):
+        if 0 <= _file + _df < 8:
+            if _rank < 7:
+                SHIELD_MASK[WHITE, _square] |= np.uint64(1 << ((_rank + 1) * 8 + _file + _df))
+            if _rank > 0:
+                SHIELD_MASK[BLACK, _square] |= np.uint64(1 << ((_rank - 1) * 8 + _file + _df))
+PASSED_BONUS = np.array([0, 0, 8, 15, 30, 55, 90, 0], dtype=np.int64)  # by rank from home
+DOUBLED_MG, DOUBLED_EG = -10, -15
+ISOLATED_MG, ISOLATED_EG = -10, -15
+BISHOP_PAIR_MG, BISHOP_PAIR_EG = 25, 40
+ROOK_SEMI_OPEN_MG, ROOK_OPEN_MG = 12, 20
+MOBILITY_MG = np.array([0, 3, 3, 2, 1, 0], dtype=np.int64)  # per reachable square, by piece
+MOBILITY_EG = np.array([0, 3, 3, 4, 2, 0], dtype=np.int64)
+SHIELD_MG = 10  # per pawn beyond two in front of the king
+
 # --- Search constants ---------------------------------------------------------------
 
 MATE = 30_000
@@ -777,6 +816,86 @@ def unmake_null(bb, st, stack, row):  # type: ignore[no-untyped-def]
 # --- Compiled evaluation ------------------------------------------------------------
 
 
+@njit(types.UniTuple(int64, 2)(U64, int64), cache=False)
+def structure(bb, colour):  # type: ignore[no-untyped-def]
+    """Pawn structure, bishop pair, rook files, mobility and king shelter for one colour.
+
+    Returns a middlegame and an endgame score; the caller blends them by phase.
+    """
+    mg = 0
+    eg = 0
+    base = colour * 6
+    pawns = bb[base + PAWN]
+    their_pawns = bb[(colour ^ 1) * 6 + PAWN]
+    own = bb[OCC_WHITE + colour]
+    occupied = bb[OCC_ALL]
+
+    pieces = pawns
+    while pieces:
+        square = ctz(pieces)
+        pieces &= pieces - U1
+        file = square & 7
+        if not PASSED_MASK[colour, square] & their_pawns:
+            rank = square >> 3 if colour == WHITE else 7 - (square >> 3)
+            mg += PASSED_BONUS[rank] // 2
+            eg += PASSED_BONUS[rank]
+        if FILE_MASK[file] & pawns & ~BIT[square]:
+            mg += DOUBLED_MG
+            eg += DOUBLED_EG
+        if not NEIGHBOUR_FILES[file] & pawns:
+            mg += ISOLATED_MG
+            eg += ISOLATED_EG
+
+    pieces = bb[base + KNIGHT]
+    while pieces:
+        square = ctz(pieces)
+        pieces &= pieces - U1
+        reach = popcount(KNIGHT_ATT[square] & ~own)
+        mg += reach * MOBILITY_MG[KNIGHT]
+        eg += reach * MOBILITY_EG[KNIGHT]
+    pieces = bb[base + BISHOP]
+    if popcount(pieces) >= 2:
+        mg += BISHOP_PAIR_MG
+        eg += BISHOP_PAIR_EG
+    while pieces:
+        square = ctz(pieces)
+        pieces &= pieces - U1
+        reach = popcount(bishop_attacks(square, occupied) & ~own)
+        mg += reach * MOBILITY_MG[BISHOP]
+        eg += reach * MOBILITY_EG[BISHOP]
+    pieces = bb[base + ROOK]
+    while pieces:
+        square = ctz(pieces)
+        pieces &= pieces - U1
+        reach = popcount(rook_attacks(square, occupied) & ~own)
+        mg += reach * MOBILITY_MG[ROOK]
+        eg += reach * MOBILITY_EG[ROOK]
+        if not FILE_MASK[square & 7] & pawns:
+            mg += ROOK_OPEN_MG if not FILE_MASK[square & 7] & their_pawns else ROOK_SEMI_OPEN_MG
+    pieces = bb[base + QUEEN]
+    while pieces:
+        square = ctz(pieces)
+        pieces &= pieces - U1
+        reach = popcount(
+            (bishop_attacks(square, occupied) | rook_attacks(square, occupied)) & ~own
+        )
+        mg += reach * MOBILITY_MG[QUEEN]
+        eg += reach * MOBILITY_EG[QUEEN]
+
+    king = king_square(bb, colour)
+    mg += (popcount(SHIELD_MASK[colour, king] & pawns) - 2) * SHIELD_MG
+    return mg, eg
+
+
+@njit(int64(int64, int64), cache=False)
+def scaled(value, weight):  # type: ignore[no-untyped-def]
+    """value * weight / TOTAL_PHASE, rounded towards zero so the score mirrors exactly."""
+    product = value * weight
+    if product < 0:
+        return -((-product) // TOTAL_PHASE)
+    return product // TOTAL_PHASE
+
+
 @njit(int64(U64, I64), cache=False)
 def evaluate(bb, st):  # type: ignore[no-untyped-def]
     """Static score in centipawns, from the point of view of the side to move."""
@@ -803,12 +922,11 @@ def evaluate(bb, st):  # type: ignore[no-untyped-def]
         phase = TOTAL_PHASE
     white_king = king_square(bb, WHITE)
     black_king = king_square(bb, BLACK)
-    balance += (
-        KING_MG[WHITE, white_king] * phase + KING_EG[WHITE, white_king] * (TOTAL_PHASE - phase)
-    ) // TOTAL_PHASE
-    balance -= (
-        KING_MG[BLACK, black_king] * phase + KING_EG[BLACK, black_king] * (TOTAL_PHASE - phase)
-    ) // TOTAL_PHASE
+    white_mg, white_eg = structure(bb, WHITE)
+    black_mg, black_eg = structure(bb, BLACK)
+    middlegame = KING_MG[WHITE, white_king] - KING_MG[BLACK, black_king] + white_mg - black_mg
+    endgame = KING_EG[WHITE, white_king] - KING_EG[BLACK, black_king] + white_eg - black_eg
+    balance += scaled(middlegame, phase) + scaled(endgame, TOTAL_PHASE - phase)
 
     # With a decisive edge and almost nothing left, material and placement give the search
     # no reason to make progress, so it shuffles until the game is drawn. Push the bare
@@ -825,7 +943,7 @@ def evaluate(bb, st):  # type: ignore[no-untyped-def]
     # A score that has not been converted for many moves is worth less, and drifts
     # towards the draw the fifty-move rule will make of it. That gives the stronger side
     # a reason to make progress rather than shuffle.
-    balance -= balance * st[HALFMOVE] // 200
+    balance -= scaled(balance, st[HALFMOVE] * TOTAL_PHASE // 200)
 
     return balance if st[SIDE] == WHITE else -balance
 
