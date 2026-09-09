@@ -71,8 +71,8 @@ used in our rated games (`openings.txt`). Elo figures carry 95% intervals.
 | numba port, same logic as v6 | nb1 `628b58a` | 40–0 vs greedy, 30–0 vs v6 | **+46 =2 −0 vs v6** (48 games) |
 | search tuned for depth 13 (A) | `c9a9f2b` | **+98 ±79** vs nb1 (80 games) | — |
 | non-PV pruning, IIR, fifty-move drift (B) | `91cf8e6` | +41 ±78 vs A (77 games) | — |
-| evaluation terms (C) | `f7cd53d` | **+167 ±88** vs B (74 games) | gate running: 4–0 so far |
-| contempt (D) | `be8e53b` | screen running | — |
+| evaluation terms (C) | `f7cd53d` | **+167 ±88** vs B (74 games) | **+31 =4 −1 vs nb1** (36 games, +417 ±205) |
+| contempt (D) | `be8e53b` | +44 ±77 vs C (80 games) | check running vs C |
 
 The evaluation terms are the same idea that lost 102 Elo on the slow engine. At depth
 13 they are the largest single gain. The earlier result was a depth artefact, not a
@@ -204,13 +204,13 @@ From `aichessathon.com/docs` — authoritative and they change, so re-fetch:
 Before today: ladder rating 1518, rank #241 of 418, record 8–8–3 over the rated rounds,
 ~520–690 Elo short of a London seat.
 
-The compiled build nb1 (`628b58a`) beat the live build 46–0–2 at the real clock. Its
-`agent.zip` is at the repo root. The full stack through C is ~+300 Elo over nb1 at the
-fast clock and is in its real-clock gate now; D is in its fast screen.
+The compiled build nb1 (`628b58a`) beat the live build 46–0–2 at the real clock, and
+build C (`f7cd53d`) beat nb1 31–1–4 at the real clock. C's `agent.zip` is at the repo
+root. D (contempt) is +44 ±77 over C at the fast clock and in a real-clock check.
 
-Uploads close **11 September 11:00**. Order of business: upload nb1 and read the
-platform's init time from the validation log; gate C; upload C; gate D on top if there
-is time. Then leave it alone.
+Uploads close **11 September 11:00**. Order of business: upload C and read the
+platform's init time from the validation log; ship D on top only if its real-clock
+check is not negative. Then leave it alone.
 
 ---
 
