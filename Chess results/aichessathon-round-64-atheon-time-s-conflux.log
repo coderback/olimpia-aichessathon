@@ -1,0 +1,91 @@
+AI CHESSATHON MATCH LOG
+=======================
+
+MATCH
+  Round          Rated 64
+  Team           Karvaxis
+  Colour         White
+  Opponent       Atheon, Time's Conflux
+  Opening        Caro-Kann Exchange
+  Start FEN      r3kb1r/pp1qpppp/2n2n2/3p4/3P1Bb1/1QPB3P/PP3PP1/RN2K1NR b KQkq - 0 8
+  You moved      Second
+  Machine        w-2f0760
+  Finished       2026-09-08 10:25:03 UTC
+  Match ID       d1b9ffaa-4871-4788-a81f-c877ab5e3a41
+
+INIT
+  Ready in       0.6 s
+  Budget         90.0 s
+  Used           1 percent
+
+CLOCK
+  Base           120.0 s plus 0.5 s per move
+  Moves          51
+  Time used      123.5 s
+  Slowest        4.0 s on move 19
+  Fastest        0.7 s on move 50
+  Average        2.4 s
+  Left at end    22.0 s
+
+RESULT
+  Drawn by threefold repetition
+  Game lasted 242.8 s
+
+MOVES
+    #  move          time     clock left
+    1  Nd2           3.4 s      117.1 s
+    2  Bxg6          3.3 s      114.2 s
+    3  Ngf3          3.4 s      111.3 s
+    4  O-O           1.6 s      110.2 s
+    5  Bxd6          3.5 s      107.1 s
+    6  c4            3.5 s      104.1 s
+    7  Rfe1          1.9 s      102.7 s
+    8  c5            1.7 s      101.5 s
+    9  Rad1          3.7 s       98.3 s
+   10  Qe3           2.6 s       96.2 s
+   11  Ne5           3.7 s       93.0 s
+   12  dxe5          3.5 s       90.0 s
+   13  Nf3           3.8 s       86.7 s
+   14  Qxc5          2.8 s       84.4 s
+   15  Nd4           2.7 s       82.2 s
+   16  Re3           3.9 s       78.8 s
+   17  Rde1          3.3 s       76.1 s
+   18  g4            3.6 s       73.0 s
+   19  Rf3           4.0 s       69.4 s
+   20  g5            3.2 s       66.8 s
+   21  Rd3           1.9 s       65.4 s
+   22  Rdd1          3.8 s       62.1 s
+   23  f4            2.8 s       59.8 s
+   24  Re3           3.5 s       56.8 s
+   25  Rd3           1.9 s       55.4 s
+   26  Kg2           2.6 s       53.3 s
+   27  Kf3           3.1 s       50.7 s
+   28  Ke3           2.8 s       48.4 s
+   29  b4            2.9 s       46.0 s
+   30  Rxd1          1.4 s       45.1 s
+   31  Rd3           2.7 s       42.9 s
+   32  b5            2.6 s       40.9 s
+   33  Rd1           2.5 s       38.9 s
+   34  Rd3           1.5 s       37.9 s
+   35  Rxc3+         1.3 s       37.1 s
+   36  Kd2           2.2 s       35.4 s
+   37  Kc2           1.4 s       34.5 s
+   38  h4            2.1 s       32.9 s
+   39  Kd3           1.6 s       31.8 s
+   40  Ke3           1.7 s       30.6 s
+   41  Kd3           1.9 s       29.2 s
+   42  Kc3           1.5 s       28.2 s
+   43  Kd3           1.7 s       27.0 s
+   44  Kc3           1.1 s       26.4 s
+   45  Kd3           1.6 s       25.2 s
+   46  Nc6           1.4 s       24.3 s
+   47  Nd8           1.1 s       23.7 s
+   48  Nb7+          0.7 s       23.6 s
+   49  Nd8+          1.2 s       22.8 s
+   50  Nb7+          0.7 s       22.7 s
+   51  Nd8           1.2 s       22.0 s
+
+OUTPUT
+  Nothing written to stderr
+
+Email hello@aichessathon.com with this file if anything here is unclear.

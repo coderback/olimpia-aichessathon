@@ -1,0 +1,87 @@
+AI CHESSATHON MATCH LOG
+=======================
+
+MATCH
+  Round          Rated 71
+  Team           Karvaxis
+  Colour         White
+  Opponent       neomatica
+  Opening        Queen's Gambit Declined
+  Start FEN      r1bq1rk1/pppnbpp1/4pn1p/3p4/2PP3B/2N1PN2/PP3PPP/R2QKB1R w KQ - 2 8
+  You moved      First
+  Machine        w-002d36
+  Finished       2026-09-08 17:27:10 UTC
+  Match ID       22871a4f-a5f7-4b87-9c15-d1ace41c2670
+
+INIT
+  Ready in       0.6 s
+  Budget         90.0 s
+  Used           1 percent
+
+CLOCK
+  Base           120.0 s plus 0.5 s per move
+  Moves          47
+  Time used      112.0 s
+  Slowest        4.1 s on move 21
+  Fastest        0.0 s on move 47
+  Average        2.4 s
+  Left at end    31.5 s
+
+RESULT
+  Won by checkmate
+  Game lasted 247.4 s
+
+MOVES
+    #  move          time     clock left
+    1  Qb3           2.5 s      118.0 s
+    2  Bd3           3.3 s      115.2 s
+    3  exd4          3.3 s      112.4 s
+    4  Bxc4          3.3 s      109.5 s
+    5  O-O           2.3 s      107.8 s
+    6  Qxc4          2.9 s      105.4 s
+    7  Rfb1          2.0 s      103.8 s
+    8  Bxf6          2.6 s      101.8 s
+    9  Ne4           3.5 s       98.8 s
+   10  Ne5           3.5 s       95.8 s
+   11  Qc3           2.6 s       93.6 s
+   12  Qe3           2.4 s       91.7 s
+   13  Qb3           2.8 s       89.4 s
+   14  Nc3           2.2 s       87.8 s
+   15  Qxc2          2.9 s       85.4 s
+   16  Qb3           3.8 s       82.1 s
+   17  Re1           2.6 s       80.0 s
+   18  Qc4           3.9 s       76.6 s
+   19  Qe2           3.1 s       74.0 s
+   20  Rec1          2.6 s       71.9 s
+   21  Rd1           4.1 s       68.3 s
+   22  Re1           3.9 s       64.9 s
+   23  g3            2.6 s       62.9 s
+   24  a3            2.7 s       60.6 s
+   25  Qf1           2.4 s       58.7 s
+   26  Qd3           3.4 s       55.8 s
+   27  Qe3           2.8 s       53.5 s
+   28  Qf4           1.6 s       52.4 s
+   29  Ne4           2.1 s       50.8 s
+   30  Qc7           2.9 s       48.3 s
+   31  Kxf2          1.8 s       47.1 s
+   32  Ke3           2.6 s       44.9 s
+   33  Re2           2.0 s       43.4 s
+   34  Qc8+          2.5 s       41.4 s
+   35  Qxc6          2.4 s       39.5 s
+   36  Rf2           2.1 s       37.8 s
+   37  g4            1.6 s       36.8 s
+   38  Rxf7          1.4 s       35.8 s
+   39  Rf3           2.1 s       34.3 s
+   40  Rg3           1.7 s       33.1 s
+   41  Qc7           1.6 s       32.0 s
+   42  Rag1          1.9 s       30.6 s
+   43  Rxg7          1.3 s       29.8 s
+   44  Kxd3          0.1 s       30.1 s
+   45  Kd2           0.1 s       30.6 s
+   46  bxc3          0.0 s       31.0 s
+   47  Rg8#          0.0 s       31.5 s
+
+OUTPUT
+  Nothing written to stderr
+
+Email hello@aichessathon.com with this file if anything here is unclear.

@@ -1,0 +1,75 @@
+AI CHESSATHON MATCH LOG
+=======================
+
+MATCH
+  Round          Rated 75
+  Team           Karvaxis
+  Colour         White
+  Opponent       berserker
+  Opening        Sicilian Closed
+  Start FEN      1rbqk2r/pp2ppbp/2np1np1/2p5/4P3/2NP1NP1/PPP2PBP/R1BQ1RK1 w k - 4 8
+  You moved      First
+  Machine        w-14b4d5
+  Finished       2026-09-08 21:23:09 UTC
+  Match ID       f2ec50d5-78b8-401f-8c27-645d40bd025f
+
+INIT
+  Ready in       0.6 s
+  Budget         90.0 s
+  Used           1 percent
+
+CLOCK
+  Base           120.0 s plus 0.5 s per move
+  Moves          35
+  Time used      85.3 s
+  Slowest        3.9 s on move 17
+  Fastest        0.0 s on move 35
+  Average        2.4 s
+  Left at end    52.2 s
+
+RESULT
+  Lost by checkmate
+  Game lasted 185.0 s
+
+MOVES
+    #  move          time     clock left
+    1  d4            2.0 s      118.5 s
+    2  Nxd4          2.5 s      116.5 s
+    3  Nxc6          2.1 s      114.9 s
+    4  bxc3          1.9 s      113.5 s
+    5  Bxc6+         3.4 s      110.6 s
+    6  Be3           1.9 s      109.2 s
+    7  Qf3           3.5 s      106.2 s
+    8  Rfe1          2.3 s      104.4 s
+    9  Bh6+          2.4 s      102.6 s
+   10  Rxe6          2.9 s      100.1 s
+   11  Rae1          3.7 s       96.9 s
+   12  Bd5           3.0 s       94.5 s
+   13  R1e4          3.0 s       92.0 s
+   14  Rc4           2.5 s       89.9 s
+   15  Rc3           3.8 s       86.6 s
+   16  Ra3           3.4 s       83.7 s
+   17  Re2           3.9 s       80.3 s
+   18  Kg2           3.4 s       77.4 s
+   19  Kh3           3.2 s       74.8 s
+   20  Kg4           2.8 s       72.4 s
+   21  Kf4           2.9 s       70.1 s
+   22  Rxa7          3.2 s       67.4 s
+   23  Qe3           2.4 s       65.5 s
+   24  c4            3.1 s       62.9 s
+   25  Ke4           2.7 s       60.8 s
+   26  Kxd5          3.4 s       57.9 s
+   27  Kxd6          2.7 s       55.7 s
+   28  Qxe5          3.2 s       53.0 s
+   29  Qe6           2.5 s       51.0 s
+   30  Rxe6          1.1 s       50.4 s
+   31  Kc5           0.2 s       50.7 s
+   32  Kd5           0.2 s       50.9 s
+   33  Kc5           0.1 s       51.3 s
+   34  Kb5           0.1 s       51.7 s
+   35  Ka5           0.0 s       52.2 s
+
+OUTPUT
+  Nothing written to stderr
+
+Email hello@aichessathon.com with this file if anything here is unclear.

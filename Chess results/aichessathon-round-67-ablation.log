@@ -1,0 +1,92 @@
+AI CHESSATHON MATCH LOG
+=======================
+
+MATCH
+  Round          Rated 67
+  Team           Karvaxis
+  Colour         Black
+  Opponent       Ablation
+  Opening        Sicilian Sveshnikov
+  Start FEN      r2qkb1r/1p3ppp/p1npbn2/4p3/4P3/N1N2P2/PPP3PP/R1BQKB1R w KQkq - 2 9
+  You moved      Second
+  Machine        w-4e0f8c
+  Finished       2026-09-08 13:23:17 UTC
+  Match ID       ab835d27-4f02-47ba-90ef-5bad25304fb2
+
+INIT
+  Ready in       0.5 s
+  Budget         90.0 s
+  Used           1 percent
+
+CLOCK
+  Base           120.0 s plus 0.5 s per move
+  Moves          52
+  Time used      122.1 s
+  Slowest        4.2 s on move 18
+  Fastest        0.9 s on move 46
+  Average        2.3 s
+  Left at end    23.9 s
+
+RESULT
+  Drawn by threefold repetition
+  Game lasted 245.3 s
+
+MOVES
+    #  move          time     clock left
+    1  d5            3.1 s      117.4 s
+    2  Nxd5          3.4 s      114.5 s
+    3  Bxd5          3.4 s      111.6 s
+    4  Bb4+          1.8 s      110.3 s
+    5  Be6           1.9 s      108.9 s
+    6  Qh4+          3.5 s      105.9 s
+    7  Qe7           2.0 s      104.4 s
+    8  Qxb4          2.9 s      102.0 s
+    9  Nd4           2.3 s      100.2 s
+   10  Qxd2+         2.7 s       98.1 s
+   11  O-O-O         3.7 s       94.8 s
+   12  Kb8           1.8 s       93.5 s
+   13  Bf5           2.1 s       91.9 s
+   14  Bc2           3.5 s       88.9 s
+   15  Rd7           2.3 s       87.1 s
+   16  Rd6           4.1 s       83.5 s
+   17  f6            2.7 s       81.3 s
+   18  Rdd8          4.2 s       77.7 s
+   19  Rde8          3.6 s       74.5 s
+   20  Ka8           3.2 s       71.9 s
+   21  Bg6           2.7 s       69.6 s
+   22  fxe5          3.3 s       66.9 s
+   23  Rxe5          2.0 s       65.4 s
+   24  Rf8+          3.3 s       62.5 s
+   25  Rd8           3.6 s       59.5 s
+   26  Rd7           2.1 s       57.8 s
+   27  Rd8           3.3 s       55.0 s
+   28  Nc6           3.2 s       52.4 s
+   29  Rxd2+         1.9 s       50.9 s
+   30  bxc6          2.8 s       48.6 s
+   31  Bb1           2.8 s       46.3 s
+   32  Ba2           2.0 s       44.8 s
+   33  Bxc4          2.6 s       42.7 s
+   34  Kb7           1.9 s       41.3 s
+   35  Kc7           2.4 s       39.4 s
+   36  Kd6           1.7 s       38.2 s
+   37  Ke5           1.8 s       36.8 s
+   38  Ke4           2.0 s       35.3 s
+   39  Be6           2.1 s       33.7 s
+   40  Bg4           1.1 s       33.1 s
+   41  Be6           1.6 s       32.0 s
+   42  Bg4           1.6 s       31.0 s
+   43  Bf3           1.1 s       30.4 s
+   44  Bg4           1.3 s       29.6 s
+   45  Be6           1.1 s       29.0 s
+   46  Bg4           0.9 s       28.5 s
+   47  Be6           1.4 s       27.6 s
+   48  Bg4           1.3 s       26.8 s
+   49  Bf3           1.1 s       26.2 s
+   50  Bg4           1.2 s       25.5 s
+   51  Kd5           1.5 s       24.5 s
+   52  Ke4           1.1 s       23.9 s
+
+OUTPUT
+  Nothing written to stderr
+
+Email hello@aichessathon.com with this file if anything here is unclear.

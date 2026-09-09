@@ -1,0 +1,84 @@
+AI CHESSATHON MATCH LOG
+=======================
+
+MATCH
+  Round          Rated 66
+  Team           Karvaxis
+  Colour         Black
+  Opponent       Alpha Knights
+  Opening        Nimzo-Indian Defence
+  Start FEN      rnbq1rk1/ppp2ppp/3b1n2/3p4/3P4/2NBP3/PP2NPPP/R1BQ1RK1 b - - 3 8
+  You moved      First
+  Machine        w-2f0760
+  Finished       2026-09-08 12:19:11 UTC
+  Match ID       861cd81d-5f02-40df-9c41-1ad4399d5faa
+
+INIT
+  Ready in       2.9 s
+  Budget         90.0 s
+  Used           3 percent
+
+CLOCK
+  Base           120.0 s plus 0.5 s per move
+  Moves          44
+  Time used      110.9 s
+  Slowest        3.8 s on move 22
+  Fastest        0.0 s on move 44
+  Average        2.5 s
+  Left at end    31.1 s
+
+RESULT
+  Lost by checkmate
+  Game lasted 245.6 s
+
+MOVES
+    #  move          time     clock left
+    1  Nc6           3.3 s      117.2 s
+    2  Be6           3.3 s      114.5 s
+    3  Re8           3.3 s      111.7 s
+    4  Qd7           1.5 s      110.6 s
+    5  Ne4           3.4 s      107.8 s
+    6  Nxc3          3.4 s      104.9 s
+    7  Rad8          3.4 s      102.0 s
+    8  h6            3.4 s       99.1 s
+    9  a6            3.4 s       96.2 s
+   10  Qe7           3.4 s       93.3 s
+   11  axb5          2.5 s       91.3 s
+   12  Qg5           3.5 s       88.3 s
+   13  Re7           3.5 s       85.3 s
+   14  Red7          3.5 s       82.3 s
+   15  Be7           3.5 s       79.3 s
+   16  Qg3           3.5 s       76.2 s
+   17  Bf6           3.6 s       73.2 s
+   18  Bxf5          1.9 s       71.8 s
+   19  Re7           2.7 s       69.6 s
+   20  Qg5           2.9 s       67.2 s
+   21  Qxe3          1.9 s       65.8 s
+   22  Rxe3          3.8 s       62.6 s
+   23  Re7           2.4 s       60.7 s
+   24  Kh8           3.5 s       57.7 s
+   25  Kg8           2.3 s       55.9 s
+   26  Kh8           3.2 s       53.2 s
+   27  Red7          2.7 s       51.0 s
+   28  Re7           2.9 s       48.6 s
+   29  g6            2.6 s       46.5 s
+   30  gxf5          2.7 s       44.3 s
+   31  Rd6           1.7 s       43.1 s
+   32  Red7          2.5 s       41.1 s
+   33  Kg7           1.4 s       40.2 s
+   34  Rxd7          1.1 s       39.6 s
+   35  Bd8           2.3 s       37.8 s
+   36  f4            2.2 s       36.1 s
+   37  Kg6           1.8 s       34.8 s
+   38  Kxf5          1.8 s       33.5 s
+   39  Kg6           2.0 s       32.0 s
+   40  f6            1.4 s       31.1 s
+   41  Kf5           1.2 s       30.4 s
+   42  h5            0.7 s       30.1 s
+   43  f3            0.0 s       30.6 s
+   44  Kf4           0.0 s       31.1 s
+
+OUTPUT
+  Nothing written to stderr
+
+Email hello@aichessathon.com with this file if anything here is unclear.
