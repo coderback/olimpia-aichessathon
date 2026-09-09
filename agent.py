@@ -454,6 +454,10 @@ LMP_DEPTH = 4
 LMP_COUNT = np.array([0, 5, 8, 13, 20], dtype=np.int64)
 IIR_DEPTH = 4
 TT_SLACK = 2
+# A draw is scored a little below level for the side that started the search, so the
+# engine plays on when it could repeat and presses when it is ahead. Most opponents on
+# the ladder are weaker than this build, and a draw against them is a lost half point.
+CONTEMPT = 20
 CHECK_INTERVAL = 1023  # nodes between clock reads, as a mask
 
 EXACT, LOWER, UPPER = 0, 1, 2
@@ -1043,6 +1047,12 @@ def history_credit(hh, side, move, bonus):  # type: ignore[no-untyped-def]
     hh[index] += bonus - hh[index] * abs(bonus) // HISTORY_LIMIT
 
 
+@njit(int64(int64), cache=False)
+def draw_score(ply):  # type: ignore[no-untyped-def]
+    """The root side is to move at even plies; a draw is worse for it and better for the other."""
+    return -CONTEMPT if ply % 2 == 0 else CONTEMPT
+
+
 @njit(boolean(I64, float64), cache=False)
 def out_of_time(st, deadline):  # type: ignore[no-untyped-def]
     st[NODES] += 1
@@ -1105,17 +1115,17 @@ def negamax(bb, st, stack, ml, tt, hh, depth, alpha, beta, ply, allow_null, dead
 
     # a line back to a position already on the board, or earlier in this line, is a draw
     if st[HALFMOVE] >= 100:
-        return 0
+        return draw_score(ply)
     earliest = row - st[HALFMOVE]
     i = row - 2
     while i >= earliest and i >= 0:
         if stack[i, U_HASH] == key:
-            return 0
+            return draw_score(ply)
         i -= 2
     if ply >= MAX_PLY - 1:
         return evaluate(bb, st)
     if popcount(bb[OCC_ALL]) <= 4 and insufficient_material(bb):
-        return 0
+        return draw_score(ply)
 
     slot = int64(key & TT_MASK) << 1
     table_move = 0
@@ -1280,7 +1290,7 @@ def negamax(bb, st, stack, ml, tt, hh, depth, alpha, beta, ply, allow_null, dead
             flag = EXACT
 
     if legal == 0:
-        return -MATE + ply if in_check else 0
+        return -MATE + ply if in_check else draw_score(ply)
     tt_store(tt, key, depth, store_score(alpha, ply), flag, best_move)
     return alpha
 
