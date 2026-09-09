@@ -27,6 +27,7 @@ def main() -> None:
     parser.add_argument(
         "--start", type=int, default=0, help="index of the first game, so shards differ"
     )
+    parser.add_argument("--pgn-dir", type=Path, help="write each game as a PGN here")
     arguments = parser.parse_args()
     openings = [chess.STARTING_FEN]
     if arguments.openings:
@@ -65,6 +66,9 @@ def main() -> None:
             or (not undecided and (outcome.result == "white") != plays_white)
         ):
             broken[outcome.termination] = broken.get(outcome.termination, 0) + 1
+        if arguments.pgn_dir:
+            arguments.pgn_dir.mkdir(parents=True, exist_ok=True)
+            (arguments.pgn_dir / f"game_{game + 1:04d}.pgn").write_text(outcome.pgn + "\n")
         print(f"game {game + 1}: {outcome.result} by {outcome.termination}", flush=True)
 
     score = (wins + draws / 2) / arguments.games
