@@ -461,7 +461,7 @@ CONTEMPT = 20
 CHECK_INTERVAL = 1023  # nodes between clock reads, as a mask
 
 EXACT, LOWER, UPPER = 0, 1, 2
-TT_BITS = 21
+TT_BITS = 23  # 8M entries, 128 MB; a real-clock game visits hundreds of millions of nodes
 TT_MASK = np.uint64((1 << TT_BITS) - 1)
 SCORE_BIAS = 32_768
 
@@ -1401,7 +1401,20 @@ class Engine:
         self.history.append(int(self.bb[HASH]))
         del self.history[:-1000]
 
-    def search(self, board: chess.Board, deadline: float, max_nodes: int = 1 << 60) -> chess.Move:
+    def search(
+        self,
+        board: chess.Board,
+        deadline: float,
+        max_nodes: int = 1 << 60,
+        hard_deadline: float | None = None,
+    ) -> chess.Move:
+        """Deepen until the deadline; a pass already under way may run on to the hard one.
+
+        A pass predicted to overrun the hard deadline is not started. One that overruns
+        is aborted there, and the best root move it had proved is kept.
+        """
+        if hard_deadline is None:
+            hard_deadline = deadline
         st, stack = self.st, self.stack
         load_position(board, self.bb, st)
         # the positions already played sit under the root so the repetition scan sees them
@@ -1426,8 +1439,10 @@ class Engine:
         for depth in range(1, MAX_DEPTH + 1):
             # Each pass costs a multiple of the one before it. Predicting the next one from
             # the last one measured adapts to the position.
-            elapsed = time.perf_counter() - started
-            if pass_cost and elapsed + pass_cost * growth > deadline - started:
+            now_ = time.perf_counter()
+            if now_ >= deadline:
+                break
+            if pass_cost and now_ - started + pass_cost * growth > hard_deadline - started:
                 break
             pass_started = time.perf_counter()
             # Aspiration: search in a narrow window around the last score, which cuts off
@@ -1439,7 +1454,7 @@ class Engine:
             while True:
                 found, move = search_root(
                     self.bb, st, stack, self.ml, self.tt, self.hh, depth, best, alpha, beta,
-                    deadline,
+                    hard_deadline,
                 )
                 if st[ABORT] or alpha < found < beta:
                     break
@@ -1557,6 +1572,8 @@ def fallback_move(board: chess.Board, deadline: float) -> chess.Move:
 
 INCREMENT_MS = 500
 OVERHEAD_MS = 150.0
+HARD_FACTOR = 2.0  # a pass under way may run to twice the budget
+HARD_CLOCK_SHARE = 0.5  # but never past half the clock
 MIN_BUDGET_MS = 5.0
 PANIC_MS = 100
 
@@ -1584,13 +1601,17 @@ def get_move(fen: str, time_left_ms: int) -> str:
     board = chess.Board(fen)
     if not any(board.legal_moves):
         return "0000"  # the referee ends the game before asking, so this is only a guard
-    deadline = started + _budget_ms(time_left_ms, board) / 1000.0
+    budget_ms = _budget_ms(time_left_ms, board)
+    deadline = started + budget_ms / 1000.0
+    hard_ms = min(budget_ms * HARD_FACTOR, time_left_ms * HARD_CLOCK_SHARE - OVERHEAD_MS)
+    hard_ms = max(budget_ms, hard_ms)
+    hard_deadline = started + hard_ms / 1000.0
 
     move: chess.Move | None = None
     if time_left_ms >= PANIC_MS and board.is_valid():
         try:
             _engine.remember(board)
-            move = _engine.search(board, deadline)
+            move = _engine.search(board, deadline, hard_deadline=hard_deadline)
             if not board.is_legal(move):
                 move = None
         except Exception:  # any failure here must still produce a move
