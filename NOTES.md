@@ -72,7 +72,8 @@ used in our rated games (`openings.txt`). Elo figures carry 95% intervals.
 | search tuned for depth 13 (A) | `c9a9f2b` | **+98 ±79** vs nb1 (80 games) | — |
 | non-PV pruning, IIR, fifty-move drift (B) | `91cf8e6` | +41 ±78 vs A (77 games) | — |
 | evaluation terms (C) | `f7cd53d` | **+167 ±88** vs B (74 games) | **+31 =4 −1 vs nb1** (36 games, +417 ±205) |
-| contempt (D) | `be8e53b` | +44 ±77 vs C (80 games) | check running vs C |
+| contempt (D) | `be8e53b` | +44 ±77 vs C (80 games) | **+15 =14 −7 vs C** (36 games, +79 ±116) |
+| soft/hard time limits, 8M table (E) | `792ea0b` | −45 ±78 vs D (78 games) | check running vs D |
 
 The evaluation terms are the same idea that lost 102 Elo on the slow engine. At depth
 13 they are the largest single gain. The earlier result was a depth artefact, not a
@@ -205,12 +206,14 @@ Before today: ladder rating 1518, rank #241 of 418, record 8–8–3 over the ra
 ~520–690 Elo short of a London seat.
 
 The compiled build nb1 (`628b58a`) beat the live build 46–0–2 at the real clock, and
-build C (`f7cd53d`) beat nb1 31–1–4 at the real clock. C's `agent.zip` is at the repo
-root. D (contempt) is +44 ±77 over C at the fast clock and in a real-clock check.
+build C (`f7cd53d`) beat nb1 31–1–4 at the real clock. **C was uploaded and validated
+on 9 September at 17:01Z: platform init 21.9 s and 27.5 s of the 90 s budget.** D passed
+its real-clock check on top of C (15–7–14) and is the next upload. E lost its fast screen
+but is a time-management change, which a 10 s clock cannot judge, so it is in a
+real-clock check.
 
-Uploads close **11 September 11:00**. Order of business: upload C and read the
-platform's init time from the validation log; ship D on top only if its real-clock
-check is not negative. Then leave it alone.
+Uploads close **11 September 11:00**. Order of business: upload D; ship E on top only
+if its real-clock check is not negative, otherwise revert it. Then leave it alone.
 
 ---
 
