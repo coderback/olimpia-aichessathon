@@ -421,15 +421,6 @@ ROOK_SEMI_OPEN_MG, ROOK_OPEN_MG = 12, 20
 MOBILITY_MG = np.array([0, 3, 3, 2, 1, 0], dtype=np.int64)  # per reachable square, by piece
 MOBILITY_EG = np.array([0, 3, 3, 4, 2, 0], dtype=np.int64)
 SHIELD_MG = 10  # per pawn beyond two in front of the king
-# King danger. Each attack on a square next to the enemy king counts in units by the
-# attacking piece; the penalty grows with the square of the units, so a coordinated
-# attack costs far more than a lone piece, and a lone piece counts half. This is what
-# the Stockfish review of the rated games found missing: in every position the compiled
-# engine still misplayed, one side had pieces bearing on the other king and the score
-# did not know.
-ATTACK_UNITS = np.array([0, 2, 2, 3, 5, 0], dtype=np.int64)
-KING_DANGER_CAP = 80
-KING_DANGER_DIVISOR = 12
 
 # --- Search constants ---------------------------------------------------------------
 
@@ -829,12 +820,11 @@ def unmake_null(bb, st, stack, row):  # type: ignore[no-untyped-def]
 # --- Compiled evaluation ------------------------------------------------------------
 
 
-@njit(types.UniTuple(int64, 3)(U64, int64), cache=False)
+@njit(types.UniTuple(int64, 2)(U64, int64), cache=False)
 def structure(bb, colour):  # type: ignore[no-untyped-def]
     """Pawn structure, bishop pair, rook files, mobility and king shelter for one colour.
 
-    Returns a middlegame score, an endgame score, and the attack units this colour's
-    pieces bring against the other king; the caller blends and applies them.
+    Returns a middlegame and an endgame score; the caller blends them by phase.
     """
     mg = 0
     eg = 0
@@ -843,10 +833,6 @@ def structure(bb, colour):  # type: ignore[no-untyped-def]
     their_pawns = bb[(colour ^ 1) * 6 + PAWN]
     own = bb[OCC_WHITE + colour]
     occupied = bb[OCC_ALL]
-    their_king = king_square(bb, colour ^ 1)
-    zone = KING_ATT[their_king] | BIT[their_king]
-    units = 0
-    attackers = 0
 
     pieces = pawns
     while pieces:
@@ -868,14 +854,9 @@ def structure(bb, colour):  # type: ignore[no-untyped-def]
     while pieces:
         square = ctz(pieces)
         pieces &= pieces - U1
-        attacks = KNIGHT_ATT[square]
-        reach = popcount(attacks & ~own)
+        reach = popcount(KNIGHT_ATT[square] & ~own)
         mg += reach * MOBILITY_MG[KNIGHT]
         eg += reach * MOBILITY_EG[KNIGHT]
-        hits = popcount(attacks & zone)
-        if hits:
-            units += hits * ATTACK_UNITS[KNIGHT]
-            attackers += 1
     pieces = bb[base + BISHOP]
     if popcount(pieces) >= 2:
         mg += BISHOP_PAIR_MG
@@ -883,52 +864,31 @@ def structure(bb, colour):  # type: ignore[no-untyped-def]
     while pieces:
         square = ctz(pieces)
         pieces &= pieces - U1
-        attacks = bishop_attacks(square, occupied)
-        reach = popcount(attacks & ~own)
+        reach = popcount(bishop_attacks(square, occupied) & ~own)
         mg += reach * MOBILITY_MG[BISHOP]
         eg += reach * MOBILITY_EG[BISHOP]
-        hits = popcount(attacks & zone)
-        if hits:
-            units += hits * ATTACK_UNITS[BISHOP]
-            attackers += 1
     pieces = bb[base + ROOK]
     while pieces:
         square = ctz(pieces)
         pieces &= pieces - U1
-        attacks = rook_attacks(square, occupied)
-        reach = popcount(attacks & ~own)
+        reach = popcount(rook_attacks(square, occupied) & ~own)
         mg += reach * MOBILITY_MG[ROOK]
         eg += reach * MOBILITY_EG[ROOK]
-        hits = popcount(attacks & zone)
-        if hits:
-            units += hits * ATTACK_UNITS[ROOK]
-            attackers += 1
         if not FILE_MASK[square & 7] & pawns:
             mg += ROOK_OPEN_MG if not FILE_MASK[square & 7] & their_pawns else ROOK_SEMI_OPEN_MG
     pieces = bb[base + QUEEN]
     while pieces:
         square = ctz(pieces)
         pieces &= pieces - U1
-        attacks = bishop_attacks(square, occupied) | rook_attacks(square, occupied)
-        reach = popcount(attacks & ~own)
+        reach = popcount(
+            (bishop_attacks(square, occupied) | rook_attacks(square, occupied)) & ~own
+        )
         mg += reach * MOBILITY_MG[QUEEN]
         eg += reach * MOBILITY_EG[QUEEN]
-        hits = popcount(attacks & zone)
-        if hits:
-            units += hits * ATTACK_UNITS[QUEEN]
-            attackers += 1
 
     king = king_square(bb, colour)
     mg += (popcount(SHIELD_MASK[colour, king] & pawns) - 2) * SHIELD_MG
-    if attackers < 2:
-        units //= 2
-    return mg, eg, units
-
-
-@njit(int64(int64), cache=False)
-def king_danger(units):  # type: ignore[no-untyped-def]
-    units = min(units, KING_DANGER_CAP)
-    return units * units // KING_DANGER_DIVISOR
+    return mg, eg
 
 
 @njit(int64(int64, int64), cache=False)
@@ -966,9 +926,8 @@ def evaluate(bb, st):  # type: ignore[no-untyped-def]
         phase = TOTAL_PHASE
     white_king = king_square(bb, WHITE)
     black_king = king_square(bb, BLACK)
-    white_mg, white_eg, white_attack = structure(bb, WHITE)
-    black_mg, black_eg, black_attack = structure(bb, BLACK)
-    white_mg += king_danger(white_attack) - king_danger(black_attack)
+    white_mg, white_eg = structure(bb, WHITE)
+    black_mg, black_eg = structure(bb, BLACK)
     middlegame = KING_MG[WHITE, white_king] - KING_MG[BLACK, black_king] + white_mg - black_mg
     endgame = KING_EG[WHITE, white_king] - KING_EG[BLACK, black_king] + white_eg - black_eg
     balance += scaled(middlegame, phase) + scaled(endgame, TOTAL_PHASE - phase)
