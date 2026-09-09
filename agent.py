@@ -37,6 +37,18 @@ PHASE_WEIGHT = {
 }
 TOTAL_PHASE = 24
 
+# How much each piece contributes to hunting the enemy king, which is not the same as how
+# much it contributes to the phase of the game. A lone queen is a mating attack; a lone
+# rook is not, and against only minor pieces a king belongs in the centre.
+THREAT_WEIGHT = {
+    chess.PAWN: 0,
+    chess.KNIGHT: 1,
+    chess.BISHOP: 1,
+    chess.ROOK: 3,
+    chess.QUEEN: 6,
+}
+TOTAL_THREAT = 10
+
 
 def _table(rows: str) -> list[int]:
     """Read a table written rank 8 first into python-chess square order, where a1 is 0."""
@@ -164,34 +176,44 @@ def evaluate(board: chess.Board) -> int:
     black = board.occupied_co[chess.BLACK]
     balance = 0
     phase = 0
+    white_threat = 0  # what white still has to attack the black king with
+    black_threat = 0  # and what black has to attack white with
 
     bitboards = (board.pawns, board.knights, board.bishops, board.rooks, board.queens)
     for piece, bitboard in zip(SCORED, bitboards, strict=True):
         phase += PHASE_WEIGHT[piece] * bitboard.bit_count()
+        threat = THREAT_WEIGHT[piece]
         table = WHITE_SCORE[piece]
         mine = bitboard & white
+        white_threat += threat * mine.bit_count()
         while mine:
             balance += table[(mine & -mine).bit_length() - 1]
             mine &= mine - 1
         table = BLACK_SCORE[piece]
         theirs = bitboard & black
+        black_threat += threat * theirs.bit_count()
         while theirs:
             balance -= table[(theirs & -theirs).bit_length() - 1]
             theirs &= theirs - 1
 
-    # The king wants shelter while the queens are on and the centre once they are gone.
-    # The blend is integer so the score never depends on float rounding.
+    # A king shelters while the OTHER side still has the pieces to hunt it, and walks to
+    # the centre once they are gone. Blending on total material instead got this backwards:
+    # trading our own pieces away lowered the phase, shifted our king towards the endgame
+    # table, and paid it to march up the board while an enemy queen was still on. Four of
+    # five rated losses were our king three to five ranks advanced with their queen alive.
     phase = min(phase, TOTAL_PHASE)
     king = board.king(chess.WHITE)
     if king is not None:
+        danger = min(black_threat, TOTAL_THREAT)
         balance += (
-            KING_MIDDLEGAME[king] * phase + KING_ENDGAME[king] * (TOTAL_PHASE - phase)
-        ) // TOTAL_PHASE
+            KING_MIDDLEGAME[king] * danger + KING_ENDGAME[king] * (TOTAL_THREAT - danger)
+        ) // TOTAL_THREAT
     king = board.king(chess.BLACK)
     if king is not None:
+        danger = min(white_threat, TOTAL_THREAT)
         balance -= (
-            KING_MG_BLACK[king] * phase + KING_EG_BLACK[king] * (TOTAL_PHASE - phase)
-        ) // TOTAL_PHASE
+            KING_MG_BLACK[king] * danger + KING_EG_BLACK[king] * (TOTAL_THREAT - danger)
+        ) // TOTAL_THREAT
 
     # With a decisive edge and almost nothing left, material and placement give the search
     # no reason to make progress, so it shuffles until the game is drawn. Push the bare
