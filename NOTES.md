@@ -74,7 +74,7 @@ used in our rated games (`openings.txt`). Elo figures carry 95% intervals.
 | evaluation terms (C) | `f7cd53d` | **+167 ±88** vs B (74 games) | **+31 =4 −1 vs nb1** (36 games, +417 ±205) |
 | contempt (D) | `68c63c6` | +44 ±77 vs C (80 games) | **+15 =14 −7 vs C** (36 games, +79 ±116) |
 | soft/hard time limits, 8M table (E) | `7af899e` | −35 ±77 vs D (80 games) | **−10 ±114 vs D** (36 games) — **reverted** |
-| king attack (F) | `e88d0ce` | +16 ±44 vs D (240 games) | gate running vs D |
+| king attack (F) | `e88d0ce` | +16 ±44 vs D (240 games) | **−29 ±114 vs D** (36 games) — **reverted** |
 
 The evaluation terms are the same idea that lost 102 Elo on the slow engine. At depth
 13 they are the largest single gain. The earlier result was a depth artefact, not a
@@ -177,6 +177,14 @@ real one. The unused time is real, but a pass that overruns takes it from later 
 the way to use it is a larger budget per move, not a longer overrun, and that was not
 tried. Reverted on the branch so the attempt and the evidence stay on the record.
 
+**King attack (F).** Attack units on the squares around the enemy king, squared,
+middlegame only; chosen because all three positions the compiled build still misplays
+are king attacks its score cannot see. +16 at the fast clock, −29 at the real one, and
+reverted. This is the second king-safety term to pass a fast screen and fail the real
+clock (the first was on the Python engine). The diagnosis stands; the term does not.
+The next attempt should be tested only at the real clock, and should probably scale
+with the defender's missing shelter rather than stand alone.
+
 Otherwise every batch today screened positive. The previous engine's rejections are in
 §2. One lesson from them survived intact: fast-clock results were not trusted for any
 upload, only the 120 s + 0.5 s gate.
@@ -240,9 +248,9 @@ on 9 September at 17:01Z: platform init 21.9 s and 27.5 s of the 90 s budget.** 
 uploaded and validated at 17:17Z** (init 25.5 s and 23.0 s) after passing its real-clock
 check on top of C (15–7–14); `main` is D. E was rejected at both clocks and reverted.
 
-Uploads close **11 September 11:00**. The live build is D. F (king attack) is in its
-fast screen against D and goes to the real-clock gate if that is not negative. Anything
-further needs the same; otherwise leave it alone and let the ladder play.
+Uploads close **11 September 11:00**. **The live build is D**, and `main` is D. E and F
+were rejected at the real clock and reverted. Anything further needs a real-clock gate
+against D before it goes up; otherwise leave it alone and let the ladder play.
 
 ---
 
