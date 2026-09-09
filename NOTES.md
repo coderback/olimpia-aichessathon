@@ -74,6 +74,7 @@ used in our rated games (`openings.txt`). Elo figures carry 95% intervals.
 | evaluation terms (C) | `f7cd53d` | **+167 ±88** vs B (74 games) | **+31 =4 −1 vs nb1** (36 games, +417 ±205) |
 | contempt (D) | `68c63c6` | +44 ±77 vs C (80 games) | **+15 =14 −7 vs C** (36 games, +79 ±116) |
 | soft/hard time limits, 8M table (E) | `7af899e` | −35 ±77 vs D (80 games) | **−10 ±114 vs D** (36 games) — **reverted** |
+| king attack (F) | `e88d0ce` | screen running vs D | — |
 
 The evaluation terms are the same idea that lost 102 Elo on the slow engine. At depth
 13 they are the largest single gain. The earlier result was a depth artefact, not a
@@ -91,6 +92,22 @@ verdict on the terms.
 | king danger blend | +38 | −46 | reverted |
 | reverse futility + LMP at every node | −178 | — | rejected |
 | the same, non-PV only | +127 | −44 | rejected |
+
+**Stockfish review of the rated games.** `harness/review.py` runs Stockfish 17 at depth
+16 over a folder of PGNs and reports what the dashboard shows: accuracy, centipawn loss
+and move labels for both sides, plus each of our mistakes as a position. Over the 19
+rated games the Python engine played, it scored 87–98% accuracy and lost games to
+sixteen concrete mistakes rather than to being outplayed. **The compiled build replays
+thirteen of the sixteen correctly, including all six blunders.** The three it still
+misplayed share one cause: pieces bearing on a king, with our static score far tamer
+than Stockfish (+142 against +592 in one). That is what batch F adds, and with it the
+engine finds the attacking move in one of the three at 3 s. The review is committed at
+`Chess results/stockfish-review-rounds-64-82.txt`.
+
+**Known weakness:** rook endgames. In one reviewed position (rook and pawn each, a
+passed pawn on the seventh) the compiled build reads both the drawing and the losing
+king move as level at depth 21; which one it plays depends on the tree. No endgame
+knowledge beyond the mop-up term exists yet.
 
 **Robustness:** every compiled build so far has finished every game it played. Perft
 matches python-chess exactly on ten positions covering castling, en passant, promotions
@@ -191,6 +208,12 @@ the charge before trusting any number.
 **Sample sizes.** ±80 Elo needs ~50 games, ±40 needs ~200. Node counts and depths are
 not evidence; only games at the right clock decide.
 
+**Reviewing games.** `uv run python -m harness.review "Chess results"` needs Stockfish
+(`winget install Stockfish.Stockfish`; the default path is where winget puts it). Every
+flagged position can then be handed to a build to see whether it still misplays it —
+that is how the king-attack term was chosen, and it is the cheapest diagnostic we have.
+Analysing our own games with an engine is allowed; only shipping one is not.
+
 ---
 
 ## 6. Constraints that shaped this
@@ -217,9 +240,9 @@ on 9 September at 17:01Z: platform init 21.9 s and 27.5 s of the 90 s budget.** 
 uploaded and validated at 17:17Z** (init 25.5 s and 23.0 s) after passing its real-clock
 check on top of C (15–7–14); `main` is D. E was rejected at both clocks and reverted.
 
-Uploads close **11 September 11:00**. The live build is D. Anything further needs a
-real-clock gate against D before it goes up; otherwise leave it alone and let the
-ladder play.
+Uploads close **11 September 11:00**. The live build is D. F (king attack) is in its
+fast screen against D and goes to the real-clock gate if that is not negative. Anything
+further needs the same; otherwise leave it alone and let the ladder play.
 
 ---
 
