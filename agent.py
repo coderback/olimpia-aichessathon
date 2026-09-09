@@ -1066,15 +1066,24 @@ def out_of_time(st, deadline):  # type: ignore[no-untyped-def]
 def quiesce(bb, st, stack, ml, tt, hh, alpha, beta, ply, deadline):  # type: ignore[no-untyped-def]
     if st[ABORT] or out_of_time(st, deadline):
         return 0
-    stand_pat = evaluate(bb, st)
-    if stand_pat >= beta:
-        return beta
-    if stand_pat > alpha:
-        alpha = stand_pat
+    side = st[SIDE]
+    # A side in check cannot decline to move, so there is no standing pat and the reply
+    # may be any legal move rather than a capture. Without this a capture that gives
+    # check was scored as though the checked side could simply pass, which is the shape
+    # of every king attack the engine has misjudged.
+    in_check = is_attacked(bb, king_square(bb, side), side ^ 1)
+    if in_check:
+        stand_pat = -MATE + ply
+    else:
+        stand_pat = evaluate(bb, st)
+        if stand_pat >= beta:
+            return beta
+        if stand_pat > alpha:
+            alpha = stand_pat
     if ply >= MAX_PLY - 1:
-        return alpha
+        return alpha if not in_check else evaluate(bb, st)
 
-    count = generate(bb, st, ml, ply, True)
+    count = generate(bb, st, ml, ply, not in_check)
     for i in range(count):
         move = int64(ml[ply, i])
         attacker = st[move & 63] % 6
@@ -1083,8 +1092,9 @@ def quiesce(bb, st, stack, ml, tt, hh, alpha, beta, ply, deadline):  # type: ign
     # outright for nothing, and if even that does not reach alpha there is no point
     # searching it. Skipped once the board is nearly bare, where a single capture swings
     # the game and the optimistic view is not optimistic enough.
-    prune = popcount(bb[OCC_ALL]) > DELTA_MIN_PIECES
+    prune = not in_check and popcount(bb[OCC_ALL]) > DELTA_MIN_PIECES
     row = st[ROOT] + ply
+    legal = 0
     for i in range(count):
         move = pick(ml, ply, i, count)
         if prune:
@@ -1095,6 +1105,7 @@ def quiesce(bb, st, stack, ml, tt, hh, alpha, beta, ply, deadline):  # type: ign
                 continue
         if not make_move(bb, st, stack, row, move):
             continue
+        legal += 1
         score = -quiesce(bb, st, stack, ml, tt, hh, -beta, -alpha, ply + 1, deadline)
         unmake_move(bb, st, stack, row)
         if st[ABORT]:
@@ -1103,6 +1114,8 @@ def quiesce(bb, st, stack, ml, tt, hh, alpha, beta, ply, deadline):  # type: ign
             return beta
         if score > alpha:
             alpha = score
+    if in_check and legal == 0:
+        return -MATE + ply  # checkmate, found in the quiescence tree
     return alpha
 
 
