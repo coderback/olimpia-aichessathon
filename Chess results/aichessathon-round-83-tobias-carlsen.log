@@ -1,0 +1,80 @@
+AI CHESSATHON MATCH LOG
+=======================
+
+MATCH
+  Round          Rated 83
+  Team           Karvaxis
+  Colour         White
+  Opponent       Tobias Carlsen
+  Opening        Ruy Lopez, Closed
+  Start FEN      r1bqk2r/2p1bppp/p1np1n2/1p2p3/4P3/1B3N2/PPPPQPPP/RNB1R1K1 b kq - 1 8
+  You moved      Second
+  Machine        w-103c48
+  Finished       2026-09-09 14:26:47 UTC
+  Match ID       15e3bba4-983b-440e-add9-e6e36098f2ac
+
+INIT
+  Ready in       0.5 s
+  Budget         90.0 s
+  Used           1 percent
+
+CLOCK
+  Base           120.0 s plus 0.5 s per move
+  Moves          40
+  Time used      101.9 s
+  Slowest        4.0 s on move 17
+  Fastest        0.0 s on move 40
+  Average        2.5 s
+  Left at end    38.1 s
+
+RESULT
+  Won by checkmate
+  Game lasted 236.8 s
+
+MOVES
+    #  move          time     clock left
+    1  Nc3           2.4 s      118.1 s
+    2  Bd5           2.3 s      116.3 s
+    3  Qd3           2.7 s      114.1 s
+    4  Ne2           2.7 s      111.9 s
+    5  a3            2.7 s      109.7 s
+    6  axb4          2.8 s      107.4 s
+    7  Nc3           3.6 s      104.3 s
+    8  gxh3          1.9 s      103.0 s
+    9  Qe3           3.7 s       99.8 s
+   10  Bxf7+         3.6 s       96.7 s
+   11  Ng5+          2.6 s       94.6 s
+   12  Nxh3          2.8 s       92.3 s
+   13  Rxa5          3.4 s       89.4 s
+   14  Qe2           3.8 s       86.0 s
+   15  Nd5           3.4 s       83.1 s
+   16  Kg2           2.6 s       81.1 s
+   17  Ra3           4.0 s       77.6 s
+   18  Rxc3          3.7 s       74.3 s
+   19  Qxe4          2.6 s       72.3 s
+   20  f4            3.1 s       69.7 s
+   21  d4            3.5 s       66.7 s
+   22  Kg1           3.8 s       63.4 s
+   23  Rc7           3.4 s       60.5 s
+   24  Nxc7          2.7 s       58.3 s
+   25  fxe5          3.3 s       55.4 s
+   26  Kf1           2.1 s       53.9 s
+   27  Qa8+          2.3 s       52.0 s
+   28  Bg5           1.6 s       51.0 s
+   29  Kxf2          2.4 s       49.1 s
+   30  Qh1           2.1 s       47.5 s
+   31  Ke3           2.7 s       45.3 s
+   32  Qxh2          2.3 s       43.5 s
+   33  Ke2           1.5 s       42.4 s
+   34  Qxe5          2.1 s       40.9 s
+   35  Nd5           2.4 s       39.0 s
+   36  Qe4+          1.4 s       38.1 s
+   37  Ne7           1.6 s       37.0 s
+   38  Qxe7+         0.3 s       37.1 s
+   39  Bh6           0.1 s       37.6 s
+   40  Qg7#          0.0 s       38.1 s
+
+OUTPUT
+  Nothing written to stderr
+
+Email hello@aichessathon.com with this file if anything here is unclear.

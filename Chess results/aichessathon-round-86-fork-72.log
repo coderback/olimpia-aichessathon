@@ -1,0 +1,108 @@
+AI CHESSATHON MATCH LOG
+=======================
+
+MATCH
+  Round          Rated 86
+  Team           Karvaxis
+  Colour         White
+  Opponent       Fork 72
+  Opening        London System
+  Start FEN      r1bqk2r/pp3ppp/2nbpn2/1Bpp4/3P1B2/2P1P2N/PP1N1PPP/R2QK2R b KQkq - 3 7
+  You moved      Second
+  Machine        w-d5046c
+  Finished       2026-09-09 17:26:43 UTC
+  Match ID       3c9a9327-5a0c-427b-aa67-9a548f5ee195
+
+INIT
+  Ready in       0.5 s
+  Budget         90.0 s
+  Used           1 percent
+
+CLOCK
+  Base           120.0 s plus 0.5 s per move
+  Moves          68
+  Time used      136.0 s
+  Slowest        4.0 s on move 21
+  Fastest        0.0 s on move 68
+  Average        2.0 s
+  Left at end    18.0 s
+
+RESULT
+  Lost by checkmate
+  Game lasted 269.8 s
+
+MOVES
+    #  move          time     clock left
+    1  Bxc6          2.2 s      118.3 s
+    2  O-O           2.7 s      116.1 s
+    3  Re1           3.0 s      113.6 s
+    4  Qa4           3.0 s      111.1 s
+    5  dxc5          2.3 s      109.3 s
+    6  Nb3           3.4 s      106.4 s
+    7  Bg5           2.4 s      104.5 s
+    8  Bxf6          3.4 s      101.6 s
+    9  Qxa7          2.2 s       99.8 s
+   10  Qa4           3.3 s       97.1 s
+   11  Qa6           2.9 s       94.6 s
+   12  Kh1           2.0 s       93.1 s
+   13  Qa4           3.7 s       90.0 s
+   14  f3            3.7 s       86.8 s
+   15  Qb4           3.1 s       84.1 s
+   16  Qxb8+         2.8 s       81.8 s
+   17  fxe4          3.5 s       78.9 s
+   18  Nf2           2.4 s       77.0 s
+   19  Nd1           4.0 s       73.5 s
+   20  Kg1           4.0 s       70.0 s
+   21  Rc1           4.0 s       66.5 s
+   22  Ra1           3.8 s       63.2 s
+   23  Rf1           1.9 s       61.8 s
+   24  Nc1           3.4 s       58.9 s
+   25  Re1           3.4 s       56.0 s
+   26  Rf1           1.9 s       54.6 s
+   27  Re1           1.7 s       53.4 s
+   28  cxd4          3.1 s       50.8 s
+   29  Nb3           1.8 s       49.5 s
+   30  Nxe3          2.6 s       47.4 s
+   31  h3            2.1 s       45.7 s
+   32  Re2           2.0 s       44.2 s
+   33  Rae1          1.8 s       42.9 s
+   34  Nc1           1.7 s       41.7 s
+   35  Nd3           1.6 s       40.6 s
+   36  h4            2.4 s       38.7 s
+   37  h5            1.8 s       37.4 s
+   38  a3            1.5 s       36.4 s
+   39  Rf1           2.0 s       34.9 s
+   40  Rc2           1.0 s       34.4 s
+   41  Rf3           1.7 s       33.2 s
+   42  Rc1           1.4 s       32.3 s
+   43  Rxe3          1.4 s       31.4 s
+   44  Rc3           1.8 s       30.1 s
+   45  Kh2           1.8 s       28.9 s
+   46  Rxd3          1.5 s       27.9 s
+   47  Kh3           1.0 s       27.4 s
+   48  Re3           1.5 s       26.4 s
+   49  Kg3           1.5 s       25.3 s
+   50  Rxe1          1.1 s       24.7 s
+   51  Kf3           0.9 s       24.3 s
+   52  a4            1.3 s       23.5 s
+   53  Ke3           1.4 s       22.6 s
+   54  Ke4           0.9 s       22.2 s
+   55  g4            1.3 s       21.4 s
+   56  Kd3           1.2 s       20.7 s
+   57  Ke3           1.0 s       20.1 s
+   58  Ke4           1.2 s       19.4 s
+   59  Ke3           1.2 s       18.7 s
+   60  Kd2           1.1 s       18.1 s
+   61  Ke3           0.6 s       18.0 s
+   62  Kd2           1.1 s       17.4 s
+   63  Kc3           1.0 s       16.9 s
+   64  Kb4           0.8 s       16.6 s
+   65  Kb3           0.5 s       16.7 s
+   66  Kb2           0.2 s       17.0 s
+   67  Kc1           0.0 s       17.5 s
+   68  Kd2           0.0 s       18.0 s
+
+OUTPUT
+  Nothing written to stderr
+
+Email hello@aichessathon.com with this file if anything here is unclear.

@@ -1,0 +1,67 @@
+AI CHESSATHON MATCH LOG
+=======================
+
+MATCH
+  Round          Rated 84
+  Team           Karvaxis
+  Colour         Black
+  Opponent       Dominated Horses
+  Opening        English Symmetrical
+  Start FEN      r1bq1rk1/1p2ppbp/p1np1np1/2p5/2P4P/2NP1NP1/PP2PPB1/1RBQK2R w K - 0 9
+  You moved      Second
+  Machine        w-616428
+  Finished       2026-09-09 15:23:58 UTC
+  Match ID       ed79c86e-68a3-4fb4-85fc-df297d0e72d0
+
+INIT
+  Ready in       0.5 s
+  Budget         90.0 s
+  Used           1 percent
+
+CLOCK
+  Base           120.0 s plus 0.5 s per move
+  Moves          27
+  Time used      73.9 s
+  Slowest        4.2 s on move 20
+  Fastest        0.0 s on move 27
+  Average        2.7 s
+  Left at end    59.6 s
+
+RESULT
+  Lost by checkmate
+  Game lasted 100.3 s
+
+MOVES
+    #  move          time     clock left
+    1  e5            2.9 s      117.6 s
+    2  Be6           2.4 s      115.7 s
+    3  Re8           3.4 s      112.8 s
+    4  Bg4           3.4 s      109.8 s
+    5  Bd7           2.9 s      107.5 s
+    6  Nd4           2.7 s      105.3 s
+    7  Be6           2.7 s      103.1 s
+    8  Nf5           2.2 s      101.3 s
+    9  Nd4           3.6 s       98.2 s
+   10  Nc6           3.6 s       95.1 s
+   11  Nxd5          2.8 s       92.8 s
+   12  f6            2.9 s       90.4 s
+   13  fxg5          3.7 s       87.3 s
+   14  Qb6           1.8 s       86.0 s
+   15  h6            3.1 s       83.4 s
+   16  c4            2.6 s       81.2 s
+   17  Qxe3+         4.0 s       77.8 s
+   18  Qc5           2.7 s       75.5 s
+   19  gxf5          2.7 s       73.4 s
+   20  Qxc4          4.2 s       69.7 s
+   21  e4            3.2 s       67.0 s
+   22  Bxh6          2.8 s       64.8 s
+   23  Kh8           3.7 s       61.6 s
+   24  Kg8           3.5 s       58.5 s
+   25  Re7           0.4 s       58.6 s
+   26  Rxf7          0.0 s       59.1 s
+   27  Re8           0.0 s       59.6 s
+
+OUTPUT
+  Nothing written to stderr
+
+Email hello@aichessathon.com with this file if anything here is unclear.
