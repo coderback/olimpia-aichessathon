@@ -73,7 +73,7 @@ used in our rated games (`openings.txt`). Elo figures carry 95% intervals.
 | non-PV pruning, IIR, fifty-move drift (B) | `91cf8e6` | +41 ±78 vs A (77 games) | — |
 | evaluation terms (C) | `f7cd53d` | **+167 ±88** vs B (74 games) | **+31 =4 −1 vs nb1** (36 games, +417 ±205) |
 | contempt (D) | `68c63c6` | +44 ±77 vs C (80 games) | **+15 =14 −7 vs C** (36 games, +79 ±116) |
-| soft/hard time limits, 8M table (E) | `7af899e` | −45 ±78 vs D (78 games) | check running vs D |
+| soft/hard time limits, 8M table (E) | `7af899e` | −35 ±77 vs D (80 games) | **−10 ±114 vs D** (36 games) — **reverted** |
 
 The evaluation terms are the same idea that lost 102 Elo on the slow engine. At depth
 13 they are the largest single gain. The earlier result was a depth artefact, not a
@@ -154,7 +154,13 @@ it is the first thing to try if this continues.
 
 ## 4. What we tried and rejected
 
-Nothing today; every batch screened positive. The previous engine's rejections are in
+**Soft/hard time limits (E).** Letting a deepening pass run past its budget, to spend the
+11–75 s the rated games left on the clock, measured −35 at the fast clock and −10 at the
+real one. The unused time is real, but a pass that overruns takes it from later moves;
+the way to use it is a larger budget per move, not a longer overrun, and that was not
+tried. Reverted on the branch so the attempt and the evidence stay on the record.
+
+Otherwise every batch today screened positive. The previous engine's rejections are in
 §2. One lesson from them survived intact: fast-clock results were not trusted for any
 upload, only the 120 s + 0.5 s gate.
 
@@ -207,13 +213,13 @@ Before today: ladder rating 1518, rank #241 of 418, record 8–8–3 over the ra
 
 The compiled build nb1 (`628b58a`) beat the live build 46–0–2 at the real clock, and
 build C (`f7cd53d`) beat nb1 31–1–4 at the real clock. **C was uploaded and validated
-on 9 September at 17:01Z: platform init 21.9 s and 27.5 s of the 90 s budget.** D passed
-its real-clock check on top of C (15–7–14) and is the next upload. E lost its fast screen
-but is a time-management change, which a 10 s clock cannot judge, so it is in a
-real-clock check.
+on 9 September at 17:01Z: platform init 21.9 s and 27.5 s of the 90 s budget.** **D was
+uploaded and validated at 17:17Z** (init 25.5 s and 23.0 s) after passing its real-clock
+check on top of C (15–7–14); `main` is D. E was rejected at both clocks and reverted.
 
-Uploads close **11 September 11:00**. Order of business: upload D; ship E on top only
-if its real-clock check is not negative, otherwise revert it. Then leave it alone.
+Uploads close **11 September 11:00**. The live build is D. Anything further needs a
+real-clock gate against D before it goes up; otherwise leave it alone and let the
+ladder play.
 
 ---
 
