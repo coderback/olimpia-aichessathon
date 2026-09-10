@@ -289,74 +289,74 @@ def _table(rows: str) -> list[int]:
 
 
 PAWN_TABLE = _table("""
-     0   0   0   0   0   0   0   0
-    50  50  50  50  50  50  50  50
-    10  10  20  30  30  20  10  10
-     5   5  10  25  25  10   5   5
-     0   0   0  20  20   0   0   0
-     5  -5 -10   0   0 -10  -5   5
-     5  10  10 -20 -20  10  10   5
-     0   0   0   0   0   0   0   0
+      0    0    0    0    0    0    0    0
+     86   59   60   67   50   55   64   40
+     43   47   31   -1    9   46   54   43
+     22    7    2    3   10   35   27   38
+      0   -1    0   -9   18   11    5    2
+     -4  -15   12   17    5   27   34    9
+      5  -19  -30    3   -2    6   23  -22
+      0    0    0    0    0    0    0    0
 """)
 KNIGHT_TABLE = _table("""
-   -50 -40 -30 -30 -30 -30 -40 -50
-   -40 -20   0   0   0   0 -20 -40
-   -30   0  10  15  15  10   0 -30
-   -30   5  15  20  20  15   5 -30
-   -30   0  15  20  20  15   0 -30
-   -30   5  10  15  15  10   5 -30
-   -40 -20   0   5   5   0 -20 -40
-   -50 -40 -30 -30 -30 -30 -40 -50
+    -46  -37  -18  -21  -28  -31  -36  -56
+    -18  -10   -2   18   16   22   -7  -48
+    -30   11   28   20   17   38    5   -3
+    -23    6   18   42   11   43    3   19
+    -19   15   15    7   21    1   12  -15
+    -22  -28  -19   27   18  -27   -9  -43
+    -37    0   -2  -21  -11   16  -36  -32
+    -47  -29  -47  -16  -18  -24  -59  -45
 """)
 BISHOP_TABLE = _table("""
-   -20 -10 -10 -10 -10 -10 -10 -20
-   -10   0   0   0   0   0   0 -10
-   -10   0   5  10  10   5   0 -10
-   -10   5   5  10  10   5   5 -10
-   -10   0  10  10  10  10   0 -10
-   -10  10  10  10  10  10  10 -10
-   -10   5   0   0   0   0   5 -10
-   -20 -10 -10 -10 -10 -10 -10 -20
+    -24   -7  -10    9   -9  -16  -22  -11
+    -12    0   -8    9   -4   10    7  -13
+     -2   -3   -5   -8   20   37   28   20
+     -4   -4    3   29   46   -5   -7  -11
+     -5   -4    2   14   10   -7   12    0
+     24   -5   -2    6   -4  -10   12  -29
+      8  -15    1  -22   -3   -6  -33   -1
+    -18   -1  -24   -8  -33  -22  -30  -22
 """)
 ROOK_TABLE = _table("""
-     0   0   0   0   0   0   0   0
-     5  10  10  10  10  10  10   5
-    -5   0   0   0   0   0   0  -5
-    -5   0   0   0   0   0   0  -5
-    -5   0   0   0   0   0   0  -5
-    -5   0   0   0   0   0   0  -5
-    -5   0   0   0   0   0   0  -5
-     0   0   0   5   5   0   0   0
+     -2   17   11   12    1    5   30   32
+     38   19   33   26   33   22   40   35
+     17    9   10   23   39   38   22    0
+     12   17    0    5   19    8   -6    9
+    -20   -7    7   -6    3   14   19  -16
+    -27  -10   -2   -4  -32  -12   -1  -14
+    -25  -24  -31  -16  -21    1    3   -6
+    -34  -27  -28  -24  -18  -14   -6  -60
 """)
 QUEEN_TABLE = _table("""
-   -20 -10 -10  -5  -5 -10 -10 -20
-   -10   0   0   0   0   0   0 -10
-   -10   0   5   5   5   5   0 -10
-    -5   0   5   5   5   5   0  -5
-     0   0   5   5   5   5   0  -5
-   -10   5   5   5   5   5   0 -10
-   -10   0   5   0   0   0   0 -10
-   -20 -10 -10  -5  -5 -10 -10 -20
+    -37   -8   -4   -1    3   11   -5  -11
+     -3  -17   11   16   16   18   13   30
+      8   -7   -6   18   14   18   16   29
+     14   -5    2  -17    3   35   39   58
+    -17   -1  -18   -6   12   20    8   33
+     -4  -26   -7  -26   -7   -6   27   22
+    -20  -18  -18  -10  -21  -21  -21   -6
+    -14  -20   -8   -3  -20  -45  -20  -18
 """)
 KING_MIDDLEGAME = _table("""
-   -30 -40 -40 -50 -50 -40 -40 -30
-   -30 -40 -40 -50 -50 -40 -40 -30
-   -30 -40 -40 -50 -50 -40 -40 -30
-   -30 -40 -40 -50 -50 -40 -40 -30
-   -20 -30 -30 -40 -40 -30 -30 -20
-   -10 -20 -20 -20 -20 -20 -20 -10
-    20  20   0   0   0   0  20  20
-    20  30  10   0   0  10  30  20
+    -29  -39  -39  -50  -50  -40  -40  -30
+    -30  -39  -36  -49  -49  -38  -40  -30
+    -30  -35  -37  -48  -49  -39  -37  -28
+    -28  -35  -34  -43  -48  -37  -33  -33
+    -20  -22  -30  -35  -43  -32  -29  -20
+    -16  -19  -25  -28  -32  -18  -13  -10
+     31    0  -10  -26  -15   12   31   34
+     -3   30   -7  -31   21  -25   47   62
 """)
 KING_ENDGAME = _table("""
-   -50 -40 -30 -20 -20 -30 -40 -50
-   -30 -20 -10   0   0 -10 -20 -30
-   -30 -10  20  30  30  20 -10 -30
-   -30 -10  30  40  40  30 -10 -30
-   -30 -10  30  40  40  30 -10 -30
-   -30 -10  20  30  30  20 -10 -30
-   -30 -30   0   0   0   0 -30 -30
-   -50 -30 -30 -30 -30 -30 -30 -50
+    -47  -36  -22  -20  -20  -29  -41  -50
+    -27  -10   21    9    8   -3  -20  -29
+    -29   10   35   40   36   35    2  -26
+    -19   11   63   82   49   43   16  -34
+    -18    8   29   52   42   31   -3  -24
+    -45  -15    1    1   12  -11  -15  -26
+    -26  -42   -6   -7  -12  -17  -36  -49
+    -73  -48  -53  -58  -32  -37  -61  -98
 """)
 
 MIRROR = [chess.square_mirror(square) for square in range(64)]
@@ -413,14 +413,16 @@ for _square in range(64):
                 SHIELD_MASK[WHITE, _square] |= np.uint64(1 << ((_rank + 1) * 8 + _file + _df))
             if _rank > 0:
                 SHIELD_MASK[BLACK, _square] |= np.uint64(1 << ((_rank - 1) * 8 + _file + _df))
-PASSED_BONUS = np.array([0, 0, 8, 15, 30, 55, 90, 0], dtype=np.int64)  # by rank from home
-DOUBLED_MG, DOUBLED_EG = -10, -15
-ISOLATED_MG, ISOLATED_EG = -10, -15
-BISHOP_PAIR_MG, BISHOP_PAIR_EG = 25, 40
-ROOK_SEMI_OPEN_MG, ROOK_OPEN_MG = 12, 20
-MOBILITY_MG = np.array([0, 3, 3, 2, 1, 0], dtype=np.int64)  # per reachable square, by piece
-MOBILITY_EG = np.array([0, 3, 3, 4, 2, 0], dtype=np.int64)
-SHIELD_MG = 10  # per pawn beyond two in front of the king
+PASSED_MG = np.array([0, 0, -13, -30, 7, 47, 80, 0], dtype=np.int64)  # by rank from home
+PASSED_EG = np.array([0, 32, 17, 47, 84, 122, 135, 0], dtype=np.int64)
+DOUBLED_MG, DOUBLED_EG = -3, 0
+ISOLATED_MG, ISOLATED_EG = -13, -15
+BISHOP_PAIR_MG, BISHOP_PAIR_EG = 51, 44
+ROOK_SEMI_OPEN_MG, ROOK_OPEN_MG = 31, 52
+ROOK_SEMI_OPEN_EG, ROOK_OPEN_EG = -4, -7
+MOBILITY_MG = np.array([0, 10, 8, 3, 1, 0], dtype=np.int64)  # per reachable square, by piece
+MOBILITY_EG = np.array([0, 11, 12, 13, 26, 0], dtype=np.int64)
+SHIELD_MG = 30  # per pawn beyond two in front of the king
 
 # --- Search constants ---------------------------------------------------------------
 
@@ -841,8 +843,8 @@ def structure(bb, colour):  # type: ignore[no-untyped-def]
         file = square & 7
         if not PASSED_MASK[colour, square] & their_pawns:
             rank = square >> 3 if colour == WHITE else 7 - (square >> 3)
-            mg += PASSED_BONUS[rank] // 2
-            eg += PASSED_BONUS[rank]
+            mg += PASSED_MG[rank]
+            eg += PASSED_EG[rank]
         if FILE_MASK[file] & pawns & ~BIT[square]:
             mg += DOUBLED_MG
             eg += DOUBLED_EG
@@ -875,7 +877,12 @@ def structure(bb, colour):  # type: ignore[no-untyped-def]
         mg += reach * MOBILITY_MG[ROOK]
         eg += reach * MOBILITY_EG[ROOK]
         if not FILE_MASK[square & 7] & pawns:
-            mg += ROOK_OPEN_MG if not FILE_MASK[square & 7] & their_pawns else ROOK_SEMI_OPEN_MG
+            if not FILE_MASK[square & 7] & their_pawns:
+                mg += ROOK_OPEN_MG
+                eg += ROOK_OPEN_EG
+            else:
+                mg += ROOK_SEMI_OPEN_MG
+                eg += ROOK_SEMI_OPEN_EG
     pieces = bb[base + QUEEN]
     while pieces:
         square = ctz(pieces)
