@@ -77,6 +77,7 @@ used in our rated games (`openings.txt`). Elo figures carry 95% intervals.
 | king attack (F) | `e88d0ce` | +16 ±44 vs D (240 games) | **−29 ±114 vs D** (36 games) — **reverted** |
 | check evasion in quiescence (G) | `96f3263` | — | **+6 ±44 vs D** (240 games) — level, **not shipped** |
 | **fitted evaluation weights (H)** | `648fc71` | — | **+29 [+2, +56] vs D** (514 games) — **shipped** |
+| split deadline, clock reserve (K) | — | — | **+61 [+35, +88] vs H** (513 games, SPRT accepted) — **shipped** |
 
 The evaluation terms are the same idea that lost 102 Elo on the slow engine. At depth
 13 they are the largest single gain. The earlier result was a depth artefact, not a
@@ -322,9 +323,82 @@ uploaded and validated at 17:17Z** (init 25.5 s and 23.0 s) after passing its re
 check on top of C (15–7–14); `main` is D. E was rejected at both clocks and reverted.
 
 Uploads close **11 September 11:00**; the dashboard caps uploads at **10 per 24 hours**.
-**The live build is H** (`648fc71`), uploaded and validated on 10 September at 15:40Z with
-an init of 27.0 s and 29.2 s and both smoke games won by checkmate. `main` is H. E, F and G
-were rejected at the real clock; D was live before H.
+**The live build is K.** H (`648fc71`) was live from 10 September 15:40Z, validated with an
+init of 27.0 s and 29.2 s and both smoke games won by checkmate, and played rated rounds 100
+to 104 for 3–0–2. E, F and G were rejected at the real clock; D was live before H.
+
+## K: spend the clock we are already paying for
+
+**The defect.** For every move we have played in a rated game, the budget `_budget_ms` handed
+the search can be recomputed and set beside the time the platform recorded us taking. We used
+**64%** of it across the seventeen D-era games, **63%** across H's five. Three independent
+samples, two builds, one cause: `agent.py` had a single `deadline` serving as both the abort
+point for the search and the gate on opening another deepening pass. A pass was opened only if
+the *whole* of it was predicted to fit, so the search stopped dead with a third of the budget
+unspent — even though `search_root` already stores `ROOT_BEST` for a pass that never finishes.
+The machinery for a partial pass was there from the start and had never been used. It is worst
+exactly where it hurts: from our move 46 onward, which is 40% of the moves we play, we used
+**47%** of the budget.
+
+The opponents were not doing this. Across the same games they spent 2.16 s a move to our 1.93,
+and four of them drove their clock under 5 s; ours never went below 7.9 s.
+
+**The fix, in two parts.** A soft limit at half the budget decides only whether to *open* a
+pass; the hard deadline still aborts the search, and a pass opened before the soft limit runs
+on to it and keeps whatever the root found. And the budget comes out of the clock **above a
+3 s reserve** rather than out of all of it, so the clock settles on the reserve instead of on
+zero. Replayed over 75 of our own rated positions at the clocks we really had:
+
+| build | time/move | share of budget | mean depth |
+|---|---|---|---|
+| H | 1.98 s | 72% | 16.70 |
+| I, split deadline only | 2.16 s | 78% | 17.07 |
+| J, I + floor 14, no reserve | 2.42 s | 78% | 17.35 |
+| **K, I + floor 14 + reserve** | **2.32 s** | **80%** | **17.46** |
+
+K reaches deeper than J on less time, which is the reserve working: J goes on spending
+late in games where the clock is nearly gone and buys nothing with it.
+
+**Measure this on an idle machine.** The first run of this benchmark had twelve matches
+running beside it and gave H 14.01 plies against I's 16.53, so I reported the change as
+worth +2.5 plies. It is not. Contention punishes the build with the smaller budget far
+more than the one with the larger, and the gap collapses to **+0.76 plies** once the
+machine is quiet. The platform is a dedicated worker, so the quiet number is the one that
+transfers. The 513-game elo result was measured under contention too, but a time policy
+is a wall-clock property and both sides paid the same tax, so it stands.
+
+Worth noting honestly: +17% more thinking time and +0.76 plies would be worth perhaps
++20 elo by the usual time-odds rule, and the match measured +61. The match is the direct
+measurement and the one a ship decision should rest on, but the two numbers do not agree
+and I cannot account for the difference.
+
+K also shows 4 budget overruns in 105 positions with a worst of +299 ms, against H's 0
+and +15 ms. That is the hard deadline being hit and the abort unwinding, which is what a
+build that deliberately runs into its deadline should do. It is inside the 150 ms overhead
+reserve and irrelevant against a clock that settles at 7.9 s, but it is the one number
+where K is less tidy than H.
+
+**The flags, and why they were mine and not the engine's.** I and J flagged in the arena — 3
+in 106 games and 8 in 109 — and H never did. The instrumented arena records the budget each
+move asked for beside the time it really took, and it showed **H overrunning by up to 4,484 ms
+as well**. No engine does that; that is the scheduler, with twenty engines on sixteen cores.
+The platform settles it. Across **2,212 rated moves in 39 games the worst overrun is +18 ms**,
+and not one move ever ran over by as much as 200 ms:
+
+| | median | 90th | 99th | 99.9th | worst |
+|---|---|---|---|---|---|
+| platform overrun | −673 ms | −67 ms | −12 ms | +16 ms | **+18 ms** |
+
+K's 3 s reserve is 166 times the worst overrun the platform has ever produced. I nearly raised
+it to 6 s and spent 9% of middlegame thinking defending against a threat that does not exist
+on a competition worker. The arena's three K flags are my laptop, and they make the elo below
+*conservative*, since each was a loss K would not have suffered.
+
+**The result: +61 [+35, +88] over 513 real-clock games, sequential test accepted** (llr +3.24
+against a +2.94 bound). The interval excluded zero from 129 games on and tightened from both
+ends: [+1, +97] at 148, [+27, +100] at 274, [+33, +92] at 416, [+35, +88] at 513. K also keeps
+a *higher* floor under its clock than H does while spending more time: if every move spends its
+whole budget, K settles at 7.9 s where H settles at 6.3 s.
 
 **Why H shipped when G did not.** Both were "not negative", which is the rule, but that is
 where the resemblance ends. G measured +6 with a 44 point interval and wandered across zero

@@ -1430,11 +1430,23 @@ class Engine:
         pass_cost = 0.0
         growth = 2.0
         started = time.perf_counter()
+        # Two limits, not one. The hard deadline is what the search must never pass. The
+        # soft one only decides whether to open another pass: a pass opened before it runs
+        # on until the hard deadline, and the root keeps the best move any completed
+        # sub-search found, so a pass that never finishes is still worth having. Refusing
+        # to open a pass merely because the whole of it would not fit leaves the clock
+        # unspent, which across the rated games came to a third of it.
+        soft = (deadline - started) * SOFT_FRACTION
         for depth in range(1, MAX_DEPTH + 1):
             # Each pass costs a multiple of the one before it. Predicting the next one from
-            # the last one measured adapts to the position.
+            # the last one measured adapts to the position, and a pass predicted to fit
+            # whole is opened whatever the soft limit says.
             elapsed = time.perf_counter() - started
-            if pass_cost and elapsed + pass_cost * growth > deadline - started:
+            if (
+                pass_cost
+                and elapsed >= soft
+                and elapsed + pass_cost * growth > deadline - started
+            ):
                 break
             pass_started = time.perf_counter()
             # Aspiration: search in a narrow window around the last score, which cuts off
@@ -1566,16 +1578,25 @@ INCREMENT_MS = 500
 OVERHEAD_MS = 150.0
 MIN_BUDGET_MS = 5.0
 PANIC_MS = 100
+SOFT_FRACTION = 0.5  # a pass opened before half the budget may run to the whole of it
+RESERVE_MS = 3000.0  # the part of the clock no move is allowed to plan on spending
 
 
 def _budget_ms(time_left_ms: int, board: chess.Board) -> float:
     """How long this move may take. A flag is the most common self-inflicted loss.
 
+    The budget comes out of the clock above a reserve, not out of all of it. Spending a
+    share of the whole clock drives it towards zero, where a move that is merely slow
+    is a lost game; spending a share of what is above the reserve drives it towards the
+    reserve instead, and the increment then holds it there. It also spends more in the
+    middlegame, where a game is decided, than a share of the whole clock would.
+
     get_move is told the clock but never the increment, so the platform's 0.5s is a
     constant here. A local arena run at a different increment will be a little off.
     """
-    moves_left = max(18, 46 - board.fullmove_number)
-    budget = time_left_ms / moves_left + INCREMENT_MS * 0.6
+    moves_left = max(14, 46 - board.fullmove_number)
+    spendable = max(0.0, time_left_ms - RESERVE_MS)
+    budget = spendable / moves_left + INCREMENT_MS * 0.6
     budget = min(budget, time_left_ms * 0.35)
     return max(budget - OVERHEAD_MS, MIN_BUDGET_MS)
 

@@ -116,8 +116,15 @@ def main() -> None:
     parser.add_argument("folder")
     parser.add_argument("--depth", type=int, default=16)
     parser.add_argument("--engine", default=DEFAULT_ENGINE)
+    parser.add_argument(
+        "--timeout",
+        type=float,
+        default=60.0,
+        help="seconds to wait for the engine to answer uci; the default of 10 is not "
+        "enough on a machine that is also running an arena",
+    )
     args = parser.parse_args()
-    engine = chess.engine.SimpleEngine.popen_uci(args.engine)
+    engine = chess.engine.SimpleEngine.popen_uci(args.engine, timeout=args.timeout)
     engine.configure({"Threads": 1, "Hash": 256})
     for path in sorted(glob.glob(f"{args.folder}/*.pgn")):
         header, out, notes = review(path, engine, args.depth)
