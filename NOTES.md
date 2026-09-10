@@ -75,7 +75,7 @@ used in our rated games (`openings.txt`). Elo figures carry 95% intervals.
 | contempt (D) | `68c63c6` | +44 ±77 vs C (80 games) | **+15 =14 −7 vs C** (36 games, +79 ±116) |
 | soft/hard time limits, 8M table (E) | `7af899e` | −35 ±77 vs D (80 games) | **−10 ±114 vs D** (36 games) — **reverted** |
 | king attack (F) | `e88d0ce` | +16 ±44 vs D (240 games) | **−29 ±114 vs D** (36 games) — **reverted** |
-| check evasion in quiescence (G) | `96f3263` | — | 240-game gate vs D running |
+| check evasion in quiescence (G) | `96f3263` | — | **+6 ±44 vs D** (240 games) — level, shipped on correctness |
 
 The evaluation terms are the same idea that lost 102 Elo on the slow engine. At depth
 13 they are the largest single gain. The earlier result was a depth artefact, not a
@@ -133,11 +133,29 @@ five games across all three, so the handicap was checked directly: Stockfish at 
 Stockfish at 1320 four–nil, so the knob works and the brackets were simply too low. They
 are now **2500 / 2850 / 3190** (3190 is Stockfish's maximum).
 
-Read the result as a bracket, not a rating. `UCI_LimitStrength` weakens Stockfish by
-making it choose deliberately inferior moves, which are human-shaped errors that another
-engine punishes far harder than the label implies, and the scale is calibrated against
-human ratings. If the build also beats 3190 the anchor has no ceiling left and a
-node-limited Stockfish would be needed instead.
+Final result over 178 games at 120 s + 0.5 s:
+
+| opponent | result | score | implied |
+|---|---|---|---|
+| Stockfish 2500 | +38 =11 −11 | 72.5% | 2668 ±98 |
+| Stockfish 2850 | +5 =35 −18 | 38.8% | 2771 ±92 |
+| Stockfish 3190 | +0 =26 −34 | 21.7% | 2967 ±107 |
+
+**The three brackets do not agree, and that is the finding.** The implied rating climbs
+with the opponent's label and the outer two intervals do not overlap at all, which means
+Stockfish's `UCI_Elo` scale is compressed: the real gap between its 2500 and 3190 settings
+is far smaller than 690 points. So the anchor gives a range, roughly **2700–2800**, and
+cannot give a point estimate. An earlier reading at half the sample appeared to agree on
+2700–2780; with tighter intervals it no longer does.
+
+What is solid regardless of the scale: the build beats the 2500 setting clearly, holds the
+2850 setting to 35 draws in 58, and loses to the maximum setting without ever being swept
+— 26 draws in 60. This is a hard engine to beat rather than one that collapses.
+
+Read it as a bracket, not a rating. `UCI_LimitStrength` weakens Stockfish by making it
+choose deliberately inferior moves, which are human-shaped errors that another engine
+punishes harder than the label implies, and the scale is calibrated against human
+ratings.
 
 **Robustness:** every compiled build so far has finished every game it played. Perft
 matches python-chess exactly on ten positions covering castling, en passant, promotions
@@ -312,10 +330,24 @@ Running overnight on 9 September, seven workers at 120 s + 0.5 s:
 - **Stockfish at 2500 / 2850 / 3190**, three shards — an absolute bracket, and a corpus of
   losses to an engine that plays nothing like us
 
-In the morning: gate G, read the bracket, and review the Stockfish losses. Whatever those
-losses show outranks parameter tuning, which is below our measurement resolution anyway.
-If nothing resolves cleanly the right answer is to leave D alone — it is gated, validated
-and winning, and an unresolvable +20 is not worth the risk of shipping a regression.
+Both finished on the morning of 10 September. G measured **+6 ±44** — indistinguishable
+from D. It ships anyway, on the tie-break that when measurement cannot separate two
+builds, the one that is correct by construction wins: a side in check genuinely cannot
+stand pat, and answering a check with captures only is simply wrong. 240 games, no
+failure of any kind.
+
+Three changes in a row (E, F, G) have now measured flat or negative at the real clock,
+each one well motivated. The engine is at the point where reasoning about it no longer
+produces gains, which is the argument for fitting the evaluation to data rather than
+picking another idea by hand.
+
+**Next, if there is time: tune the evaluation weights against data.** The piece-square
+tables are textbook constants and the structure weights were set at "about half the
+textbook value" by hand; neither was ever fitted to this search. Logistic regression over
+the ~900 game PGNs already on disk is a few hundred parameters, trains in minutes, costs
+nothing at runtime and cannot break correctness, because it changes constants and not
+code. That is worth more than any search knob, all of which are worth less than we can
+measure.
 
 ---
 
