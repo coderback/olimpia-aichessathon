@@ -323,7 +323,15 @@ uploaded and validated at 17:17Z** (init 25.5 s and 23.0 s) after passing its re
 check on top of C (15–7–14); `main` is D. E was rejected at both clocks and reverted.
 
 Uploads close **11 September 11:00**; the dashboard caps uploads at **10 per 24 hours**.
-**The live build is K.** H (`648fc71`) was live from 10 September 15:40Z, validated with an
+**The live build is K** (`d196267`), uploaded and validated on 10 September at 23:25Z with
+an init of **21.3 s and 26.2 s** of the 90 s budget and the second smoke game won by
+checkmate in eight moves. That init is faster than H's own 27.0 s and 29.2 s, which settles
+a scare during packaging: K measured 79.7 s to import on my machine, but H measured 75.6 s
+on the same machine in the same minute. It was five hours of arena load throttling the
+laptop, not the build. K adds no numba signatures at all -- both changes are in plain Python,
+`Engine.search` and `_budget_ms`.
+
+H (`648fc71`) was live from 10 September 15:40Z, validated with an
 init of 27.0 s and 29.2 s and both smoke games won by checkmate, and played rated rounds 100
 to 104 for 3–0–2. E, F and G were rejected at the real clock; D was live before H.
 
