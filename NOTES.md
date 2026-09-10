@@ -3,16 +3,26 @@
 What we built for AI Chessathon, why it is shaped this way, what we measured, and
 what we got wrong. Written so anyone on the team can pick this up cold.
 
-Live build: `579889a`. `main` carries a revert on top of it, so `main` and the live
-build are byte-identical. The submission is `agent.py` alone; nothing else ships.
+The submission is `agent.py` alone; nothing else ships. Section 7 says which commit is
+live and which is waiting on a gate.
 
 ---
 
 ## 1. What the agent is
 
-A classical alpha-beta engine in pure Python on top of `python-chess`. No neural
-network — the rules allow a classical search as a full entry, and see §6 for why we
-never got near one.
+A classical alpha-beta engine whose board, move generator, evaluation and search are
+compiled by numba at import. The first two days were the same engine in pure Python on
+`python-chess` at ~13,000 nodes a second, depth 4–5 per move. The compiled engine runs
+at **1.4–2.0 million nodes a second**, depth 13–16 in the middlegame, 24 in endgames.
+Speed was the lever with the right order of magnitude (§7 of the previous notes said
+so; it was right) and it is worth more than everything else on this page combined.
+
+**Board** — bitboards, one per piece and colour, plus a 64-square mailbox. Sliding
+attacks are magic lookups: the occupancy along a piece's rays, masked and multiplied by
+a per-square constant, indexes a table of attack sets. The magics are found at import
+by random trial in ~2 s. Move generation is pseudo-legal; `make_move` plays the move
+and takes it straight back if the mover's king is attacked, and that is the only
+legality test. Zobrist hashes are kept incrementally.
 
 **Search**
 
@@ -20,198 +30,358 @@ never got near one.
 |---|---|
 | negamax + alpha-beta | the whole game |
 | iterative deepening | always a move to return when the clock runs out |
-| transposition table | per move, carried across deepening passes |
-| MVV-LVA ordering | captures first, most valuable victim first |
-| killer moves | quiet refutations tried early at the same ply |
-| history heuristic | quiet moves scored by how deep their cutoffs were |
+| aspiration windows | from depth 4, a ±40 window around the last score, widened on failure |
+| transposition table | 2M entries, kept for the whole game, deeper entries keep their slot |
+| MVV-LVA, killers, history | history has gravity, penalises the quiet moves tried before a cutoff, and carries between moves at half strength |
 | principal variation search | narrow window after the first move |
-| null-move pruning | guarded on zugzwang: not in check, not pawns-only |
-| late move reductions | quiet moves far down the list searched shallower |
-| quiescence | captures only, so leaves are never scored mid-exchange |
-| delta pruning | skip captures that cannot reach alpha even winning outright |
-| futility pruning | skip quiet moves near the leaves that cannot reach alpha |
+| check extension | a position in check is searched a ply deeper, wherever it is |
+| null-move pruning | R = 2, 3 from depth 6; never in check, never with pawns only |
+| late move reductions | a table in log(depth) × log(move index), one less on the PV |
+| reverse futility, late move pruning | **only at nodes proving a bound** (§3) |
+| internal iterative reduction | a ply less when the table has no move to order by |
+| futility, quiescence, delta pruning | as before |
+| contempt | a draw scores −20 for the root side, so it plays on when level |
 
-**Evaluation** — material plus piece-square tables, tapered between a middlegame and
-an endgame king table by game phase, plus a mop-up term that drives a bare king to
-the edge in a won endgame. That is all. Every attempt to add more measured worse
-(§4).
+**Evaluation** — material and piece-square tables, the king table blended between
+middlegame and endgame by phase, a mop-up term for bare-king endgames, and now:
+passed pawns by rank, doubled and isolated pawns, the bishop pair, rooks on open and
+half-open files, mobility per reachable square, pawns in front of the king. Each new
+term has a middlegame and endgame weight blended by phase. The score drifts towards
+zero as the halfmove clock climbs, so a side that is ahead makes progress.
 
-**Time management** — `_budget_ms` sizes each move from the clock it is handed; the
-search checks its deadline every 16 nodes; `get_move` predicts whether another
-deepening pass can finish from the measured cost of the last one; an aborted pass
-still contributes its best root move. Below a 100 ms clock it returns the
-best-ordered move without searching at all (§3).
+**Time management** — `_budget_ms` sizes each move from the clock; the compiled search
+reads the wall clock every 1024 nodes through numba's `objmode` (1 µs a read) and
+aborts cleanly, salvaging the best root move the aborted pass had already proved.
+Below a 100 ms clock the move is returned without searching.
+
+**Fallback** — a python-chess search of the same shape runs only if the compiled path
+raises or returns an illegal move. It has never been needed.
 
 ---
 
 ## 2. Measured results
 
-Everything below is our build against our own previous build, alternating colours.
-Elo figures carry 95% intervals.
+Head-to-head, alternating colours from the 19 curated starting positions the platform
+used in our rated games (`openings.txt`). Elo figures carry 95% intervals.
 
-| change | fast clock (5s) | real clock (120s) | outcome |
+**Compiled engine, 2026-09-09**
+
+| change | build | fast clock (10s + 0.1) | real clock (120s + 0.5) |
+|---|---|---|---|
+| numba port, same logic as v6 | nb1 `628b58a` | 40–0 vs greedy, 30–0 vs v6 | **+46 =2 −0 vs v6** (48 games) |
+| search tuned for depth 13 (A) | `c9a9f2b` | **+98 ±79** vs nb1 (80 games) | — |
+| non-PV pruning, IIR, fifty-move drift (B) | `91cf8e6` | +41 ±78 vs A (77 games) | — |
+| evaluation terms (C) | `f7cd53d` | **+167 ±88** vs B (74 games) | **+31 =4 −1 vs nb1** (36 games, +417 ±205) |
+| contempt (D) | `68c63c6` | +44 ±77 vs C (80 games) | **+15 =14 −7 vs C** (36 games, +79 ±116) |
+| soft/hard time limits, 8M table (E) | `7af899e` | −35 ±77 vs D (80 games) | **−10 ±114 vs D** (36 games) — **reverted** |
+| king attack (F) | `e88d0ce` | +16 ±44 vs D (240 games) | **−29 ±114 vs D** (36 games) — **reverted** |
+| check evasion in quiescence (G) | `96f3263` | — | **+6 ±44 vs D** (240 games) — level, **not shipped** |
+| **fitted evaluation weights (H)** | `648fc71` | — | **+29 [+2, +56] vs D** (514 games) — **shipped** |
+
+The evaluation terms are the same idea that lost 102 Elo on the slow engine. At depth
+13 they are the largest single gain. The earlier result was a depth artefact, not a
+verdict on the terms.
+
+**Pure Python engine, 2026-09-07/08** (for the record; all superseded)
+
+| change | fast (5s) | real (120s) | outcome |
 |---|---|---|---|
 | TT + PVS + history + null-move | +37 | — | shipped |
-| pass prediction + partial-pass salvage | ~0 | — | shipped on curve shape |
-| **six evaluation terms** | **−102** | — | **rejected** |
+| six evaluation terms | −102 | — | rejected, see above |
 | late move reductions | +124 | — | shipped |
-| LMR parameter sweep | unresolved | — | no change made |
-| futility + delta pruning | +36 (1008 games) | — | shipped |
-| whole build vs v1 | +69 | **+280** | — |
-| **king danger blend** | **+38** (1008 games) | **−46** | **reverted** |
-| **reverse futility + LMP** | **+127** | **−44** | **rejected** |
+| futility + delta pruning | +36 | — | shipped |
+| whole build vs v1 | +69 | +280 | — |
+| king danger blend | +38 | −46 | reverted |
+| reverse futility + LMP at every node | −178 | — | rejected |
+| the same, non-PV only | +127 | −44 | rejected |
 
-Roughly 5,000 arena games. Four of the last five changes attempted were rejected on
-evidence.
+**Stockfish review of the rated games.** `harness/review.py` runs Stockfish 17 at depth
+16 over a folder of PGNs and reports what the dashboard shows: accuracy, centipawn loss
+and move labels for both sides, plus each of our mistakes as a position. Over the 19
+rated games the Python engine played, it scored 87–98% accuracy and lost games to
+sixteen concrete mistakes rather than to being outplayed. **The compiled build replays
+thirteen of the sixteen correctly, including all six blunders.** The three it still
+misplayed share one cause: pieces bearing on a king, with our static score far tamer
+than Stockfish (+142 against +592 in one). That is what batch F adds, and with it the
+engine finds the attacking move in one of the three at 3 s. The review is committed at
+`Chess results/stockfish-review-rounds-64-82.txt`.
 
-**Robustness:** 5,184 hardening positions and 132 real-clock games with zero
-crashes, illegal moves, or flags. Ruff and mypy strict clean.
+**Known weakness:** rook endgames. In one reviewed position (rook and pawn each, a
+passed pawn on the seventh) the compiled build reads both the drawing and the losing
+king move as level at depth 21; which one it plays depends on the tree. No endgame
+knowledge beyond the mop-up term exists yet.
+
+**On the ladder.** Rounds 87 and 88 are the first two games by the compiled build, both
+wins by checkmate, and the review agrees with the arena:
+
+| | round 87 | round 88 | the Python engine (83–86) |
+|---|---|---|---|
+| accuracy | 97.9% | 93.4% | 85–95% |
+| centipawn loss per move | 8 | 28 | 46–108 |
+| inaccuracies / mistakes / blunders | 0 / 0 / 0 | 0 / 0 / 0 | 2–6 / 0–2 / 0 |
+| clock left at the end | 90.8 s | 71.9 s | 11.5–59.6 s |
+| init on the ladder machine | 18.4 s | 18.0 s | 0.5 s |
+
+Zero flagged moves in 53 moves of play, where the old engine averaged three or four a
+game. Two games is two games, both as White against weaker opponents, so this is
+consistent with the arena rather than independent confirmation of it.
+
+**Absolute strength.** Everything else here is self-play, which measures what beats us
+rather than what beats the field and gives no absolute number. `harness/spar.py` plays a
+build against Stockfish with `UCI_LimitStrength` set to a known Elo, both sides on the
+same clock. The first brackets were set at 1900 / 2200 / 2500 and the build won its first
+five games across all three, so the handicap was checked directly: Stockfish at 2500 beat
+Stockfish at 1320 four–nil, so the knob works and the brackets were simply too low. They
+are now **2500 / 2850 / 3190** (3190 is Stockfish's maximum).
+
+Final result over 178 games at 120 s + 0.5 s:
+
+| opponent | result | score | implied |
+|---|---|---|---|
+| Stockfish 2500 | +38 =11 −11 | 72.5% | 2668 ±98 |
+| Stockfish 2850 | +5 =35 −18 | 38.8% | 2771 ±92 |
+| Stockfish 3190 | +0 =26 −34 | 21.7% | 2967 ±107 |
+
+**The three brackets do not agree, and that is the finding.** The implied rating climbs
+with the opponent's label and the outer two intervals do not overlap at all, which means
+Stockfish's `UCI_Elo` scale is compressed: the real gap between its 2500 and 3190 settings
+is far smaller than 690 points. So the anchor gives a range, roughly **2700–2800**, and
+cannot give a point estimate. An earlier reading at half the sample appeared to agree on
+2700–2780; with tighter intervals it no longer does.
+
+What is solid regardless of the scale: the build beats the 2500 setting clearly, holds the
+2850 setting to 35 draws in 58, and loses to the maximum setting without ever being swept
+— 26 draws in 60. This is a hard engine to beat rather than one that collapses.
+
+Read it as a bracket, not a rating. `UCI_LimitStrength` weakens Stockfish by making it
+choose deliberately inferior moves, which are human-shaped errors that another engine
+punishes harder than the label implies, and the scale is calibrated against human
+ratings.
+
+**Robustness:** every compiled build so far has finished every game it played. Perft
+matches python-chess exactly on ten positions covering castling, en passant, promotions
+and both colours; the evaluation mirrors exactly with colours swapped on 500 random
+positions. Ruff and mypy clean.
 
 ---
 
 ## 3. Architectural decisions, and why
 
-**No pondering.** The platform suspends our process while the opponent moves. The
-starter's `AGENTS.md` says the opposite; the live docs are authoritative and the
-validation log states it explicitly. Building pondering would have been wasted.
+**numba, not a rewrite of the search.** The search logic had ~5,000 games of evidence
+behind it. The port kept it line for line and only replaced the substrate, so the first
+measurement isolated the speed gain. Then the search was retuned for the depth it now
+reaches, as its own measured step.
 
-**Transposition table is per move, not per game.** A score stored under a shorter
-game history can contradict the repetition check once that history grows. Carrying
-it across deepening passes is where nearly all the value is anyway.
+**Constant tables are module globals; mutable state travels as six flat arrays.**
+numba freezes global arrays into the compiled code at no runtime cost, even the 800 KB
+rook table. Passing a *tuple* of arrays through a recursive call instead measured **70×
+slower** — numba increfs every element on every call. Nine separate array arguments
+cost 56 ns a call, acceptable against a 1–2 µs node.
 
-**Repetition awareness.** The platform hands us a bare FEN with no history, so
-`_history` accumulates the positions we have been asked about and a line returning
-to one scores as the draw the referee will claim. This is deliberate and it has
-already saved half a point: in round 64 we were down 200cp and drew by threefold.
+**Every compiled function declares its signature.** Without one, numba compiles a fresh
+copy per distinct *literal* argument at each call site: `add_pawn_moves` was compiled
+14 times and `negamax` three times (for `True`, `False` and plain bool). Import went
+from 46 s to 22 s. The platform allows 90 s.
 
-**`evaluate` walks bitboards, not `board.piece_map()`.** The latter builds a `Piece`
-object per occupied square. Cost of the naive version was a large fraction of search
-time.
+**Bit scans and popcount are LLVM intrinsics.** numba has neither; `llvm.cttz` and
+`llvm.ctpop` bound through `numba.extending.intrinsic` compile to single instructions.
 
-**The king-table blend is integer.** A float blend produced off-by-one scores in 4
-of 8,656 positions through truncation. Integer arithmetic makes the evaluation exact
-and reproducible.
+**`uint64` discipline.** numba turns `uint64 & 255`, `uint64 + 1` and `uint64 - i` into
+`int64`, and unifying that with a `uint64` variable produces `float64`. Every mask is an
+explicit `np.uint64`; single bits come from a `BIT[sq]` table rather than a shift by a
+signed index. The one time this slipped (a Python `int` handed back from compiled code
+and passed in again) it broke the build with a `float64 & int64` error.
 
-**Panic guard below a 100 ms clock.** One search pass costs ~16 ms however small the
-budget says it is, because a board, a move list and one ply have to happen at all.
-`MIN_BUDGET_MS = 5` was a promise the code could not keep. The referee flags the
-moment elapsed exceeds the *clock*, not the budget — the 500 ms watchdog grace only
-governs the hard kill. Under a corrected check the pre-guard build lost on time in
-197 of 864 low-clock positions.
+**Pseudo-legal generation with the check in `make_move`.** Simplest correct design;
+perft made every bug loud within minutes.
 
-**`time.perf_counter`, not `time.monotonic`.** On Windows `monotonic` resolves to
-15.6 ms, so every local timing measurement was quantised to one tick. Linux is
-nanosecond-resolution so this never affected the platform, but it made our own
-numbers meaningless until it was fixed.
+**Transposition table lives for the game.** The Python engine cleared it per move
+because a stored score could contradict the repetition history. The compiled engine
+checks repetition before probing the table, so the table can stay.
 
-**Harness corrections.** `harness/` was changed only to match the published rules,
-which the starter had drifted from: 600-ply draw rather than 300-ply material
-adjudication, a flag draws when the other side cannot mate, and a failed game is
-blamed on the side that actually failed rather than always on us.
+**Repetitions.** The platform hands us a bare FEN. Every position we are asked about,
+and every position after our reply, is recorded; they sit under the root of the undo
+stack so one backward scan finds any repetition in the game or the line. Any earlier
+occurrence counts as a draw.
+
+**Pruning on a guess only where a bound is being proved.** Reverse futility and late
+move pruning applied at every node measured −178 on the slow engine; guarded to
+one-point windows, positive. The guard is the whole story.
+
+**Contempt.** In the screens every repetition draw had the stronger build level or
+behind on material — the weaker side escaping. Most ladder opponents are now weaker
+than this build, and a draw against them is a lost half point.
+
+**No neural network.** With 44 hours to the upload deadline the training pipeline
+alone would have consumed it. The compiled substrate is what a net would need anyway;
+it is the first thing to try if this continues.
 
 ---
 
 ## 4. What we tried and rejected
 
-**Six evaluation terms** (passed/doubled/isolated pawns, bishop pair, rook files,
-king shield). Textbook-correct, verified against hand-built positions and 1,800
-symmetry checks, cheap in nodes. **−102 Elo over 204 games.** Not slow — the build
-reached the same depth. Simply miscalibrated. The likely culprit is the passed-pawn
-scale stacking on a pawn table that already rewards advancement.
+**Soft/hard time limits (E).** Letting a deepening pass run past its budget, to spend the
+11–75 s the rated games left on the clock, measured −35 at the fast clock and −10 at the
+real one. The unused time is real, but a pass that overruns takes it from later moves;
+the way to use it is a larger budget per move, not a longer overrun, and that was not
+tried. Reverted on the branch so the attempt and the evidence stay on the record.
 
-**King danger blend.** Motivated by real evidence: four of five rated losses had our
-king three to five ranks advanced with the enemy queen alive. The diagnosis was
-sound and is probably still correct — `phase` counted material for *both* sides, so
-trading our own pieces away shifted our king towards the endgame table and paid it
-to march into a live queen. Shipped on +38 over 1,008 fast games under a decision
-rule fixed in advance, then measured **−46 at the real clock** and reverted.
+**King attack (F).** Attack units on the squares around the enemy king, squared,
+middlegame only; chosen because all three positions the compiled build still misplays
+are king attacks its score cannot see. +16 at the fast clock, −29 at the real one, and
+reverted. This is the second king-safety term to pass a fast screen and fail the real
+clock (the first was on the Python engine). The diagnosis stands; the term does not.
+The next attempt should be tested only at the real clock, and should probably scale
+with the defender's missing shelter rather than stand alone.
 
-**Reverse futility + late move pruning.** Applied at every node, **−178 Elo**.
-Restricted to non-PV nodes, **+127** at the fast clock and **−44** at the real one.
-Rejected. Kept on branch `rejected/shallow-pruning`.
+Otherwise every batch today screened positive. The previous engine's rejections are in
+§2. One lesson from them survived intact: fast-clock results were not trusted for any
+upload, only the 120 s + 0.5 s gate.
 
 ---
 
-## 5. How to measure, and the trap we fell into
+## 5. How to measure
 
-**The trap:** we ran essentially all of day one at 5 s + 0.1 s for throughput.
-Fast-clock results **do not predict real-clock results**, in either direction:
+**The rule:** a build ships only if it is not negative at **120 s + 0.5 s**. Fast
+screens filter candidates; they do not gate. On the Python engine fast results
+diverged from real ones three times in both directions.
 
-- whole build vs v1: +69 fast, **+280** real
-- king danger: +38 fast, **−46** real
-- shallow pruning: +127 fast, **−44** real
+**The self-play driver** (`scratchpad/selfplay.py`, not in the repo) imports two frozen
+builds once and plays them in one process. The arena spawns two fresh processes per
+game, which at a 10 s clock spends more time compiling numba than playing chess. Six
+shards of the driver play ~240 fast games an hour.
 
-We first believed fast testing was conservative for search changes and safe to rely
-on. It is not. Both of the changes we shipped and later reverted were validated at a
-clock the platform never uses.
+**Freeze builds first.** Copy each build to its own directory. The arena and the driver
+import `agent.py` at start; editing the working tree during a run corrupted a result
+once.
 
-**The rule that follows:** a change ships only if it is not negative at
-**120 s + 0.5 s**. Fast runs are a screen for filtering candidates, never a gate.
+**Openings.** `openings.txt` holds the 19 curated FENs from our rated games. Two
+deterministic engines from the start position replay the same game.
 
-**Practical mechanics**
+**Power.** The dev laptop throttles to 1.9 GHz on battery. A benchmark taken at 8%
+charge read 5× slow, and last session's mid-run shutdown was probably the battery. Check
+the charge before trusting any number.
 
-- **Freeze the builds first.** `harness.arena` defaults to `--agent .`, which imports
-  `agent.py` from the live working tree at every game. Editing during a run corrupts
-  it — this produced four phantom "crash" terminations before we noticed. Copy each
-  build to its own directory and point the arena at those.
-- **Shard across cores.** The machine has 8 physical cores and a single arena uses
-  one. Six parallel shards is ~6× throughput. Contention slows both sides equally so
-  head-to-head comparison stays fair; it only corrupts *absolute* timing numbers.
-- **Detach long runs.** `nohup ... &` plus `disown`. Tracked background tasks were
-  being stopped mid-run and taking the agent processes with them.
-- **Fix the decision rule before seeing the data**, and make it specify the *time
-  control*, not just the sample size. Ours specified games and forgot the clock,
-  which is exactly how the king change shipped.
-- **Sample sizes.** ±80 Elo needs ~50 games, ±40 needs ~200, ±30 needs ~400. A
-  real-clock experiment costs roughly 2 hours for ±80.
+**Sample sizes, and what they rule out.** ±80 Elo needs ~50 games, ±40 needs ~200.
+A 36-game real-clock gate resolves ±114, which is how E (−10) and F (−29) came to be
+decided on numbers smaller than their own error bars. A 240-game gate resolves ±40 and
+takes four shards about seven hours. **Search parameters — the LMR divisor, null-move R,
+aspiration width, futility margins — are typically worth 10–30 Elo each, which is below
+what we can resolve in the time available, so tuning them individually would be reading
+noise.** Screen many variants at the fast clock, gate only the best one or two.
 
-**Node counts are not evidence of strength.** They pointed the wrong way three
-times. Only games at the right clock decide.
+Node counts and depths are not evidence; only games at the right clock decide.
+
+**Sparring.** `uv run python -m harness.spar <build> --elo 2500 --games 60
+--base-ms 120000 --increment-ms 500` plays a build against Stockfish at a fixed strength
+with both sides on the same clock, and prints the implied rating. Use several brackets at
+once rather than guessing which one is right.
+
+**Reviewing games.** `uv run python -m harness.review "Chess results"` needs Stockfish
+(`winget install Stockfish.Stockfish`; the default path is where winget puts it). Every
+flagged position can then be handed to a build to see whether it still misplays it —
+that is how the king-attack term was chosen, and it is the cheapest diagnostic we have.
+Analysing our own games with an engine is allowed; only shipping one is not.
 
 ---
 
 ## 6. Constraints that shaped this
 
-From the live docs at `aichessathon.com/docs` — authoritative and they change, so
-re-fetch rather than trusting notes:
+From `aichessathon.com/docs` — authoritative and they change, so re-fetch:
 
 - `agent.py` at the zip root, `get_move(fen, time_left_ms) -> str`, UCI out
-- 120 s + 0.5 s per move, one core of an EPYC 9V74, 2 GB, no network, no GPU
-- 90 s init budget — **we use 0.6 s of it**, which is a large unspent asset
+- 120 s + 0.5 s per game, one core of an EPYC 9V74, 2 GB, no network, no GPU
+- 90 s init budget — the compiled build uses ~22 s of it locally
 - Only torch, numpy, python-chess, onnxruntime, numba are available
 - Game drawn at 600 plies; flag draws when the other side cannot mate
-- No third-party engine or published network, no shipped table of another engine's
-  moves or evaluations. Labelling training positions with an engine *is* allowed
-- Source a judge can read; obfuscation is disqualifying
+- No third-party engine or published network; source a judge can read
 
-**Why no neural network.** It is downstream of speed, not an alternative to it. Our
-node costs ~76 µs of which evaluation is ~16 µs; an NNUE in numpy lands at 20–40 µs,
-so a net would cost depth to buy evaluation quality — the exact trade our two
-evaluation experiments lost. And the training literature puts a net at roughly a
-month of CPU work. It only becomes viable on top of a much faster substrate.
+**Using an engine off the board is allowed, and this was checked against the live docs
+rather than assumed.** The ban reads "Third party engines are prohibited. That covers
+Stockfish, Lc0, Maia, any wrapper around one and any port or translation of one", and it
+governs what ships; the same page says "training it on positions an existing engine
+labelled is allowed". Generating training labels is the more aggressive use, so analysing
+our games and sparring against Stockfish are plainly inside the line. Verified rather than
+assumed: `agent.zip` holds one file, `agent.py` has no reference to any engine and no
+`subprocess` or `Popen`, and `harness/package.py` ships only `agent.py`, so the two files
+that know Stockfish's path can never reach a submission. The boundary to keep is "port or
+translation": the piece-square tables are the published simplified-evaluation set and the
+search techniques are general chess-programming knowledge, not transcribed code.
 
 ---
 
-## 7. Where we stand and what is left
+## 7. Where we stand
 
-Ladder rating 1518, rank #241 of 418. Roughly 82% of the field is Swiss-eligible, so
-50 London seats fill down to about overall rank 40–60, or a rating near 2040–2205.
-**We are 520–690 Elo short of a seat.** That gap is not closeable by tuning.
+Before today: ladder rating 1518, rank #241 of 418, record 8–8–3 over the rated rounds,
+~520–690 Elo short of a London seat.
 
-**The one lever with the right order of magnitude is nodes per second.** We run
-~13,000. Published numba engines report 200× that, and their search feature lists
-are almost identical to ours — so our search logic is competitive and the entire gap
-is the board representation. `python-chess` is explicitly not built for engine use.
+The compiled build nb1 (`628b58a`) beat the live build 46–0–2 at the real clock, and
+build C (`f7cd53d`) beat nb1 31–1–4 at the real clock. **C was uploaded and validated
+on 9 September at 17:01Z: platform init 21.9 s and 27.5 s of the 90 s budget.** **D was
+uploaded and validated at 17:17Z** (init 25.5 s and 23.0 s) after passing its real-clock
+check on top of C (15–7–14); `main` is D. E was rejected at both clocks and reverted.
 
-If anyone picks this up with real time available, the order is:
+Uploads close **11 September 11:00**; the dashboard caps uploads at **10 per 24 hours**.
+**The live build is H** (`648fc71`), uploaded and validated on 10 September at 15:40Z with
+an init of 27.0 s and 29.2 s and both smoke games won by checkmate. `main` is H. E, F and G
+were rejected at the real clock; D was live before H.
 
-1. Own board representation and move generator, numba-compiled, validated by
-   **perft against python-chess** (this makes movegen bugs loud, not silent — the
-   risk we wrongly treated as decisive)
-2. Port this search onto it unchanged
-3. Only then consider a learned evaluation
+**Why H shipped when G did not.** Both were "not negative", which is the rule, but that is
+where the resemblance ends. G measured +6 with a 44 point interval and wandered across zero
+as the sample grew (−9, −17, +6), which is what a change worth nothing looks like. H
+settled: +73 at 87 games, +21 at 252, **+29 with an interval of [+2, +56] at 514**, which
+excludes zero. G had a correctness argument and no corroboration; H has a second and
+independent measurement — evaluation error against Stockfish on positions held out of the
+fit — and it improved in every phase of the game:
 
-Init compile of 20–45 s fits inside the 90 s budget we are barely using.
+| phase | D error | H error |
+|---|---|---|
+| opening, 26+ pieces | 114.0 cp | **100.6 cp** |
+| middlegame, 18–25 | 158.4 | **134.2** |
+| late middlegame, 12–17 | 164.6 | **138.4** |
+| endgame, under 12 | 168.5 | **150.6** |
+
+The endgame row is the one that mattered. Training excluded positions under ten pieces
+because the mop-up term is not linear there, so endgames were under-represented and could
+have regressed — with rook endgames already the known weakness. They improved anyway.
+
+And D itself shipped on **36 games** at +79 ±116, an interval four times wider than H's and
+containing zero. Holding H to a stricter standard than the build it replaces would not have
+been consistent.
+
+Running overnight on 9 September, seven workers at 120 s + 0.5 s:
+
+- **G against D**, four shards, 240 games — the shipping decision at ±40 rather than ±114
+- **Stockfish at 2500 / 2850 / 3190**, three shards — an absolute bracket, and a corpus of
+  losses to an engine that plays nothing like us
+
+Both finished on the morning of 10 September. G measured **+6 ±44** — indistinguishable
+from D — and was **not shipped**. `agent.zip` holds D, which is what the ladder plays.
+
+The case for shipping it was correctness alone: a side in check genuinely cannot stand
+pat, and answering a check with captures only is wrong however it measures. Against that,
+a neutral change still carries tail risk, so neutral plus risk is slightly negative, and
+churning a validated build a day from the deadline for an unmeasurable gain is a bad
+trade. G stays on the branch with its evidence.
+
+One argument for it was left untested rather than dismissed: G against D is self-play,
+which is structurally blind to weaknesses both builds share, so a fix that matters mainly
+against opponents unlike us would measure zero in a clone match. That is plausible and it
+is not evidence. Testing it properly would mean running G against Stockfish and comparing
+with D's record there, which the cores were better spent diagnosing.
+
+Three changes in a row (E, F, G) have now measured flat or negative at the real clock,
+each one well motivated. The engine is at the point where reasoning about it no longer
+produces gains, which is the argument for fitting the evaluation to data rather than
+picking another idea by hand.
+
+**Next, if there is time: tune the evaluation weights against data.** The piece-square
+tables are textbook constants and the structure weights were set at "about half the
+textbook value" by hand; neither was ever fitted to this search. Logistic regression over
+the ~900 game PGNs already on disk is a few hundred parameters, trains in minutes, costs
+nothing at runtime and cannot break correctness, because it changes constants and not
+code. That is worth more than any search knob, all of which are worth less than we can
+measure.
 
 ---
 
@@ -222,8 +392,8 @@ make play                                   # one game against a baseline, real 
 make arena                                  # 20 fast games with a score
 make zip                                    # build the submission
 make gate                                   # ruff, mypy, two games that must finish
-uv run python -m harness.arena --agent <frozen-build> --opponent <frozen-build> \
-    --games 42 --base-ms 120000 --increment-ms 500     # the real gate
+uv run python -m harness.arena --agent <frozen> --opponent <frozen> --games 48 \
+    --base-ms 120000 --increment-ms 500 --openings openings.txt --pgn-dir games/
 ```
 
 The harness is local only; nothing in it ships. The platform's validation log on the
