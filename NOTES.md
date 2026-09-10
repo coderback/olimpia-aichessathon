@@ -75,7 +75,7 @@ used in our rated games (`openings.txt`). Elo figures carry 95% intervals.
 | contempt (D) | `68c63c6` | +44 ±77 vs C (80 games) | **+15 =14 −7 vs C** (36 games, +79 ±116) |
 | soft/hard time limits, 8M table (E) | `7af899e` | −35 ±77 vs D (80 games) | **−10 ±114 vs D** (36 games) — **reverted** |
 | king attack (F) | `e88d0ce` | +16 ±44 vs D (240 games) | **−29 ±114 vs D** (36 games) — **reverted** |
-| check evasion in quiescence (G) | `96f3263` | — | **+6 ±44 vs D** (240 games) — level, shipped on correctness |
+| check evasion in quiescence (G) | `96f3263` | — | **+6 ±44 vs D** (240 games) — level, **not shipped** |
 
 The evaluation terms are the same idea that lost 102 Elo on the slow engine. At depth
 13 they are the largest single gain. The earlier result was a depth artefact, not a
@@ -331,10 +331,19 @@ Running overnight on 9 September, seven workers at 120 s + 0.5 s:
   losses to an engine that plays nothing like us
 
 Both finished on the morning of 10 September. G measured **+6 ±44** — indistinguishable
-from D. It ships anyway, on the tie-break that when measurement cannot separate two
-builds, the one that is correct by construction wins: a side in check genuinely cannot
-stand pat, and answering a check with captures only is simply wrong. 240 games, no
-failure of any kind.
+from D — and was **not shipped**. `agent.zip` holds D, which is what the ladder plays.
+
+The case for shipping it was correctness alone: a side in check genuinely cannot stand
+pat, and answering a check with captures only is wrong however it measures. Against that,
+a neutral change still carries tail risk, so neutral plus risk is slightly negative, and
+churning a validated build a day from the deadline for an unmeasurable gain is a bad
+trade. G stays on the branch with its evidence.
+
+One argument for it was left untested rather than dismissed: G against D is self-play,
+which is structurally blind to weaknesses both builds share, so a fix that matters mainly
+against opponents unlike us would measure zero in a clone match. That is plausible and it
+is not evidence. Testing it properly would mean running G against Stockfish and comparing
+with D's record there, which the cores were better spent diagnosing.
 
 Three changes in a row (E, F, G) have now measured flat or negative at the real clock,
 each one well motivated. The engine is at the point where reasoning about it no longer
