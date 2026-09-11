@@ -351,9 +351,19 @@ uploaded and validated at 17:17Z** (init 25.5 s and 23.0 s) after passing its re
 check on top of C (15–7–14); `main` is D. E was rejected at both clocks and reverted.
 
 Uploads close **11 September 11:00**; the dashboard caps uploads at **10 per 24 hours**.
-**The live build is L**, uploaded on 11 September. L imports in 79.7 s on this laptop against
-K's 81.1 s measured in the same minute -- the same load artefact as the K scare below, since
-the machine had just come off five hours at 100%.
+**The live build is L** (`c539315`), uploaded and validated on 11 September at 08:11Z with
+an init of **27.5 s and 31.8 s** of the 90 s budget and a slowest move of 3.5 s.
+
+That init is about 6 s slower than K's 21.3 s and 26.2 s, which is the two new compiled
+functions, `attackers_to` and `see_ge`, and is the same ballpark as H's own 27.0 s and 29.2 s.
+Worth recording that the local measurement got this backwards: L imported in 79.7 s against
+K's 81.1 s on this laptop, taken minutes after five hours at 100% load. The absolute numbers
+being useless under load was already known; that the *comparison* was useless too was not.
+Init is a platform measurement and nothing else should be trusted for it.
+
+The first two upload attempts, at 07:15:29Z and 07:17:15Z, failed identically inside two
+seconds with `pull access denied for aichessathon/agent-base` -- the platform's own base image,
+at step 1 of 2, before our file was copied in. It cleared by 08:09Z with no change on our side.
 
 **The live build was K** (`d196267`), uploaded and validated on 10 September at 23:25Z with
 an init of **21.3 s and 26.2 s** of the 90 s budget and the second smoke game won by
