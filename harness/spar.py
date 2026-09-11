@@ -10,6 +10,15 @@ rating with the usual formula.
 
 Both sides get the same clock. Analysing and sparring with an engine is allowed; shipping
 one is not, and nothing here ships.
+
+Use --movetime for a fixed number of milliseconds per move on both sides instead of a
+clock. Stockfish under UCI_LimitStrength does not pace itself against the clock it is
+given -- measured at UCI_Elo 3190 it spends four to seventeen seconds a move out of two
+minutes, roughly two and a half times what we spend, and flags before move thirty. A
+shared clock therefore cannot anchor anything at that setting: the result is decided by
+its time management rather than by its play. A fixed per-move limit removes the clock
+from the experiment and asks the narrower, answerable question of who plays better with
+the same thinking time.
 """
 
 import argparse
@@ -46,6 +55,7 @@ def play(
     fen: str,
     base_ms: int,
     increment_ms: int,
+    movetime_ms: int = 0,
 ) -> tuple[str, str, str]:
     """One game. Returns the result from white's side, the termination, and the PGN."""
     board = chess.Board(fen)
@@ -73,12 +83,15 @@ def play(
                 break
             move = chess.Move.from_uci(uci)
         else:
-            limit = chess.engine.Limit(
-                white_clock=clocks[chess.WHITE] / 1000.0,
-                black_clock=clocks[chess.BLACK] / 1000.0,
-                white_inc=increment_ms / 1000.0,
-                black_inc=increment_ms / 1000.0,
-            )
+            if movetime_ms:
+                limit = chess.engine.Limit(time=movetime_ms / 1000.0)
+            else:
+                limit = chess.engine.Limit(
+                    white_clock=clocks[chess.WHITE] / 1000.0,
+                    black_clock=clocks[chess.BLACK] / 1000.0,
+                    white_inc=increment_ms / 1000.0,
+                    black_inc=increment_ms / 1000.0,
+                )
             played = engine.play(board, limit)
             if played.move is None:
                 termination = "engine_resigned"
@@ -86,7 +99,7 @@ def play(
                 break
             move = played.move
         clocks[side] -= (time.perf_counter() - started) * 1000.0
-        if clocks[side] < 0:
+        if clocks[side] < 0 and not movetime_ms:
             termination = "flag"
             result = "black" if side == chess.WHITE else "white"
             break
@@ -115,6 +128,12 @@ def main() -> None:
     parser.add_argument("--openings", type=Path)
     parser.add_argument("--pgn-dir", type=Path)
     parser.add_argument("--engine", default=DEFAULT_ENGINE)
+    parser.add_argument(
+        "--movetime",
+        type=int,
+        default=0,
+        help="fixed milliseconds per move for both sides; no clock, so neither can flag",
+    )
     args = parser.parse_args()
 
     openings = [chess.STARTING_FEN]
@@ -123,6 +142,11 @@ def main() -> None:
         openings = [line.strip() for line in lines if line.strip()]
 
     agent = load(args.build, "agent_under_test")
+    if args.movetime:
+        # ask for exactly the limit rather than for a clock that happens to produce it.
+        # The time manager is not what a fixed-time comparison is testing, and leaving it
+        # in would mean measuring it against Stockfish's instead of measuring the play.
+        agent._budget_ms = lambda _clock, _board, _ms=float(args.movetime): _ms
     engine = chess.engine.SimpleEngine.popen_uci(args.engine)
     # one thread and a small table, so the anchor is the rating and not the hardware
     engine.configure(
@@ -136,7 +160,7 @@ def main() -> None:
         agent_white = game % 2 == 0
         fen = openings[(game // 2) % len(openings)]
         result, termination, pgn = play(
-            agent, engine, agent_white, fen, args.base_ms, args.increment_ms
+            agent, engine, agent_white, fen, args.base_ms, args.increment_ms, args.movetime
         )
         if result == "draw":
             draws += 1
