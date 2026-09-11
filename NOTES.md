@@ -40,6 +40,9 @@ legality test. Zobrist hashes are kept incrementally.
 | reverse futility, late move pruning | **only at nodes proving a bound** (§3) |
 | internal iterative reduction | a ply less when the table has no move to order by |
 | futility, quiescence, delta pruning | as before |
+| static exchange evaluation | losing captures are pruned out of quiescence; the test is skipped when the victim is worth at least the attacker |
+| the table in quiescence | quiescence is depth zero, so every stored entry may be used, and what it writes goes in at depth zero |
+| fail-soft | every exit returns the score it proved rather than the window it was given |
 | contempt | a draw scores −20 for the root side, so it plays on when level |
 
 **Evaluation** — material and piece-square tables, the king table blended between
@@ -78,6 +81,7 @@ used in our rated games (`openings.txt`). Elo figures carry 95% intervals.
 | check evasion in quiescence (G) | `96f3263` | — | **+6 ±44 vs D** (240 games) — level, **not shipped** |
 | **fitted evaluation weights (H)** | `648fc71` | — | **+29 [+2, +56] vs D** (514 games) — **shipped** |
 | split deadline, clock reserve (K) | — | — | **+61 [+35, +88] vs H** (513 games, SPRT accepted) — **shipped** |
+| SEE, table in quiescence, fail-soft, cheaper check test (L) | — | — | **+53 [+31, +76] vs K** (629 games, SPRT accepted) — **shipped** |
 
 The evaluation terms are the same idea that lost 102 Elo on the slow engine. At depth
 13 they are the largest single gain. The earlier result was a depth artefact, not a
@@ -142,6 +146,30 @@ Final result over 178 games at 120 s + 0.5 s:
 | Stockfish 2500 | +38 =11 −11 | 72.5% | 2668 ±98 |
 | Stockfish 2850 | +5 =35 −18 | 38.8% | 2771 ±92 |
 | Stockfish 3190 | +0 =26 −34 | 21.7% | 2967 ±107 |
+
+**Why we spar at all.** Not for a score. The goal is the strongest build we can get to, with
+Stockfish's 3190 setting and full-strength Stockfish (~3600) as the things to aim at, and the
+anchor exists to say where we actually stand so the next change can be chosen well rather than
+guessed at. That means the anchor is only worth having if the method is sound, which is why the
+shared clock was abandoned once it turned out to be measuring Stockfish's time management
+instead of its play.
+
+**And the gap is large.** The build sits somewhere around 2700-3000 on this compressed scale.
+3190 is several hundred points away; 3600 is a hand-optimised C++ engine running an NNUE at
+around 100M nodes a second against our hand-written linear evaluation in numba at 1.4-2M. In
+rough order of how much they are worth:
+
+1. **A learned evaluation, NNUE-shaped** — typically +200-400 over a hand-crafted one, and the
+   only lever that changes the order of magnitude. Build H's Texel fit was the linear version of
+   this idea and bought +29. The rules allow training on positions an engine labelled; they
+   forbid shipping or porting one.
+2. **Search features not yet here** — SEE pruning of losing captures in quiescence, singular
+   extensions, continuation and countermove history, multi-cut. Roughly 10-50 elo each, and they
+   compose.
+3. **Nodes per second** — worth about what more time is worth, which K has just shown is real.
+
+With hours left, 2 is the right spend: cheap per unit of elo and testable in an evening. 1 needs
+a clear day and should never be started against an upload deadline.
 
 **The three brackets do not agree, and that is the finding.** The implied rating climbs
 with the opponent's label and the outer two intervals do not overlap at all, which means
@@ -323,7 +351,11 @@ uploaded and validated at 17:17Z** (init 25.5 s and 23.0 s) after passing its re
 check on top of C (15–7–14); `main` is D. E was rejected at both clocks and reverted.
 
 Uploads close **11 September 11:00**; the dashboard caps uploads at **10 per 24 hours**.
-**The live build is K** (`d196267`), uploaded and validated on 10 September at 23:25Z with
+**The live build is L**, uploaded on 11 September. L imports in 79.7 s on this laptop against
+K's 81.1 s measured in the same minute -- the same load artefact as the K scare below, since
+the machine had just come off five hours at 100%.
+
+**The live build was K** (`d196267`), uploaded and validated on 10 September at 23:25Z with
 an init of **21.3 s and 26.2 s** of the 90 s budget and the second smoke game won by
 checkmate in eight moves. That init is faster than H's own 27.0 s and 29.2 s, which settles
 a scare during packaging: K measured 79.7 s to import on my machine, but H measured 75.6 s
@@ -334,6 +366,82 @@ laptop, not the build. K adds no numba signatures at all -- both changes are in 
 H (`648fc71`) was live from 10 September 15:40Z, validated with an
 init of 27.0 s and 29.2 s and both smoke games won by checkmate, and played rated rounds 100
 to 104 for 3–0–2. E, F and G were rejected at the real clock; D was live before H.
+
+## L: four things the search was paying for and not using
+
+Everything classical was already in the search, so what was left was its tail. Four changes,
+gated together because there was time for exactly one 500-game match before uploads closed.
+
+**The cheap one, found by reading the loop.** `gives_check` was computed for every legal
+move, and both of its readers sit behind `quiet`. Every capture paid for an attack test that
+was then discarded, and captures are ordered first and are most of the cutoffs. Guarding the
+call with `quiet` cannot change the tree, and the measurement says so exactly: 3,200,723
+nodes before and 3,200,723 after, to the digit. Identical node counts are the whole proof.
+
+**The table in quiescence.** `quiesce` took `tt` as an argument and never touched it, while
+quiescence is the majority of the tree. A quiescence node is depth zero, so every entry in
+the table was proved at least that deep and any of them may be used; what is written from
+there goes in at depth zero, where it can never satisfy a real search's depth test but can
+still order a move. Worth 9.4% of the nodes on its own.
+
+**Why SEE paid this time.** SEE had already been written and checked against a python-chess
+reference at 529 of 530 captures, and it was a wash: it removed 23.7% of the nodes and still
+ran slower than not having it. The pruning was never the problem. `see_ge` returns True on
+its second line whenever the attacker is worth no more than the victim, so for PxQ and its
+relatives the call could only ever cost the call. Testing that condition at the call site
+skips it, and because the condition is exactly the function's own early exit the tree does
+not change -- which is again the test:
+
+| | nodes to depth 9 | seconds |
+|---|---|---|
+| SEE called on every capture | 2,388,992 | 5.01s |
+| SEE called only when it can say no | 2,388,992 | **3.70s** |
+
+Same tree, a quarter less time. The idea was right and it was being called wrong.
+
+**Fail-soft**, the one expected to be cut, turned out to be the largest contributor. Every
+exit returned the window it was given rather than the score it had proved, so the table was
+being filled with bounds that were true but loose.
+
+Together, at a fixed depth of nine over fifty positions from our own rated games:
+
+| build | nodes | vs K | best of four rounds |
+|---|---|---|---|
+| K | 3,200,723 | | 4.05s |
+| + cheaper check test, table in quiescence | 2,900,399 | −9.4% | 3.73s |
+| + SEE | 2,388,992 | −25.4% | 3.19s |
+| + fail-soft | 2,104,638 | **−34.2%** | **2.84s** |
+
+**What that is worth where it counts.** A third fewer nodes is not a third more strength;
+what matters is the depth reached at the budgets the platform actually gives us. Over 105
+positions from the rated games, with the clock each one really had:
+
+| build | depth |
+|---|---|
+| K | 17.54 |
+| K + everything but fail-soft | 17.60 |
+| **L** | **17.93** |
+
+Read the middle row before believing SEE did the work. At a fixed depth SEE removes a
+quarter of the nodes; at the real operating point it is worth **six hundredths of a ply**.
+Fail-soft is what converts the saving into search. A node bench alone would have credited
+the wrong change.
+
+**The gate.** L against K, ten shards, 120 s + 0.5 s, from the 35 platform openings:
+
+    629 games, score 57.71%, elo +54
+    paired: 312 pairs, elo +53 [+31, +76]
+    llr +3.74 (accept +2.94 / reject -2.94)  VERDICT: BETTER
+
+Four flags for L against three for K in 629 games, with worst overruns of 13.7 s and 11.0 s
+on both sides. That is the arena, not the build: ten shards pin all sixteen threads, and the
+platform's own worst overrun across 2,212 rated moves is +18 ms.
+
+**A measurement note worth keeping.** The first forty minutes of benching this build were
+thrown away. The laptop was on battery at 1882 MHz against a maximum of 3201, and a single
+round of the node bench moved by 40% between runs -- enough to reverse the ranking of the
+thing being measured. `bench_min.py` now interleaves rounds and takes the minimum, since
+interference can only ever make a round slower.
 
 ## K: spend the clock we are already paying for
 

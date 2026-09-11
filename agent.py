@@ -1004,6 +1004,125 @@ def tt_store(tt, key, depth, score, flag, move):  # type: ignore[no-untyped-def]
     )
 
 
+@njit(uint64(U64, int64, uint64), cache=False)
+def attackers_to(bb, square, occupied):  # type: ignore[no-untyped-def]
+    """Every piece of either colour attacking the square, for a given occupancy.
+
+    The occupancy is a parameter rather than the board's own because the exchange below
+    removes pieces as they capture, which is what uncovers the x-rays behind them.
+    """
+    return (
+        (PAWN_ATT[BLACK, square] & bb[PAWN])
+        | (PAWN_ATT[WHITE, square] & bb[6 + PAWN])
+        | (KNIGHT_ATT[square] & (bb[KNIGHT] | bb[6 + KNIGHT]))
+        | (KING_ATT[square] & (bb[KING] | bb[6 + KING]))
+        | (
+            bishop_attacks(square, occupied)
+            & (bb[BISHOP] | bb[QUEEN] | bb[6 + BISHOP] | bb[6 + QUEEN])
+        )
+        | (
+            rook_attacks(square, occupied)
+            & (bb[ROOK] | bb[QUEEN] | bb[6 + ROOK] | bb[6 + QUEEN])
+        )
+    )
+
+
+@njit(boolean(U64, I64, int64, int64), cache=False)
+def see_ge(bb, st, move, threshold):  # type: ignore[no-untyped-def]
+    """Does the exchange on this square come out at or above the threshold?
+
+    Both sides capture with their least valuable attacker in turn and either may stop when
+    continuing no longer pays, which is what makes this an exchange rather than a sum. Only
+    a running balance is carried: `swap` is what the side to move still stands to gain, sign
+    flipped each ply, so a side whose balance has gone negative would rather not recapture.
+
+    Pins are ignored, as they are in the engine this follows. A pinned defender makes the
+    answer too pessimistic now and then; paying for legality checks at every leaf would cost
+    more than the mistake does.
+    """
+    if move & (PROMO_MASK | F_EP | F_CASTLE):
+        return True  # the attacker's own value changes; leave these to the ordinary search
+
+    frm = move & 63
+    to = (move >> 6) & 63
+    victim = st[to]
+    swap = (0 if victim == EMPTY else PIECE_VALUE[victim % 6]) - threshold
+    if swap < 0:
+        return False  # even winning the piece outright does not reach the threshold
+    swap = PIECE_VALUE[st[frm] % 6] - swap
+    if swap <= 0:
+        return True  # they cannot take back for enough to matter
+
+    occupied = bb[OCC_ALL] ^ BIT[frm] ^ BIT[to]
+    side = st[frm] // 6
+    attackers = attackers_to(bb, to, occupied)
+    result = 1
+    while True:
+        side ^= 1
+        attackers &= occupied
+        mine = attackers & bb[OCC_WHITE + side]
+        if mine == U0:
+            break
+        result ^= 1
+        base = side * 6
+        found = mine & bb[base + PAWN]
+        if found != U0:
+            swap = PIECE_VALUE[PAWN] - swap
+            if swap < result:
+                break
+            occupied ^= BIT[ctz(found)]
+            attackers |= bishop_attacks(to, occupied) & (
+                bb[BISHOP] | bb[QUEEN] | bb[6 + BISHOP] | bb[6 + QUEEN]
+            )
+            continue
+        found = mine & bb[base + KNIGHT]
+        if found != U0:
+            swap = PIECE_VALUE[KNIGHT] - swap
+            if swap < result:
+                break
+            occupied ^= BIT[ctz(found)]
+            continue
+        found = mine & bb[base + BISHOP]
+        if found != U0:
+            swap = PIECE_VALUE[BISHOP] - swap
+            if swap < result:
+                break
+            occupied ^= BIT[ctz(found)]
+            attackers |= bishop_attacks(to, occupied) & (
+                bb[BISHOP] | bb[QUEEN] | bb[6 + BISHOP] | bb[6 + QUEEN]
+            )
+            continue
+        found = mine & bb[base + ROOK]
+        if found != U0:
+            swap = PIECE_VALUE[ROOK] - swap
+            if swap < result:
+                break
+            occupied ^= BIT[ctz(found)]
+            attackers |= rook_attacks(to, occupied) & (
+                bb[ROOK] | bb[QUEEN] | bb[6 + ROOK] | bb[6 + QUEEN]
+            )
+            continue
+        found = mine & bb[base + QUEEN]
+        if found != U0:
+            swap = PIECE_VALUE[QUEEN] - swap
+            if swap < result:
+                break
+            occupied ^= BIT[ctz(found)]
+            attackers |= (
+                bishop_attacks(to, occupied)
+                & (bb[BISHOP] | bb[QUEEN] | bb[6 + BISHOP] | bb[6 + QUEEN])
+            ) | (
+                rook_attacks(to, occupied)
+                & (bb[ROOK] | bb[QUEEN] | bb[6 + ROOK] | bb[6 + QUEEN])
+            )
+            continue
+        # only the king is left, and it may not capture into a defended square
+        if (attackers & bb[OCC_WHITE + (side ^ 1)]) != U0:
+            return result == 0
+        return result == 1
+    return result != 0
+
+
 @njit(int64(I64, int64), cache=False)
 def victim_value(st, move):  # type: ignore[no-untyped-def]
     victim = st[(move >> 6) & 63]
@@ -1073,13 +1192,33 @@ def out_of_time(st, deadline):  # type: ignore[no-untyped-def]
 def quiesce(bb, st, stack, ml, tt, hh, alpha, beta, ply, deadline):  # type: ignore[no-untyped-def]
     if st[ABORT] or out_of_time(st, deadline):
         return 0
+
+    # The table is shared with the main search. A quiescence node is depth zero, so
+    # every entry in it was proved at least this deep and any of them may be used.
+    # A hit here saves the evaluation below as well as the captures underneath it.
+    key = bb[HASH]
+    slot = int64(key & TT_MASK) << 1
+    if tt[slot] == key:
+        data = tt[slot + 1]
+        score = load_score(int64(data & uint64(0xFFFF)) - SCORE_BIAS, ply)
+        flag = int64((data >> uint64(23)) & uint64(3))
+        if flag == EXACT:
+            return score
+        if flag == LOWER:
+            if score >= beta:
+                return score
+        elif score <= alpha:
+            return score
+
     stand_pat = evaluate(bb, st)
+    best = stand_pat
     if stand_pat >= beta:
-        return beta
+        tt_store(tt, key, 0, store_score(stand_pat, ply), LOWER, 0)
+        return stand_pat
     if stand_pat > alpha:
         alpha = stand_pat
     if ply >= MAX_PLY - 1:
-        return alpha
+        return alpha  # depth-limited rather than proved, so nothing is stored
 
     count = generate(bb, st, ml, ply, True)
     for i in range(count):
@@ -1092,6 +1231,8 @@ def quiesce(bb, st, stack, ml, tt, hh, alpha, beta, ply, deadline):  # type: ign
     # the game and the optimistic view is not optimistic enough.
     prune = popcount(bb[OCC_ALL]) > DELTA_MIN_PIECES
     row = st[ROOT] + ply
+    best_move = 0
+    flag = UPPER
     for i in range(count):
         move = pick(ml, ply, i, count)
         if prune:
@@ -1100,6 +1241,19 @@ def quiesce(bb, st, stack, ml, tt, hh, alpha, beta, ply, deadline):  # type: ign
                 gain += PIECE_VALUE[(move >> PROMO_SHIFT) & 7]
             if stand_pat + gain + DELTA_MARGIN <= alpha:
                 continue
+        # A capture that loses material on the square is not worth a subtree. Delta
+        # pruning above asks whether winning the piece outright would be enough; this
+        # asks whether the piece can be won at all.
+        #
+        # Skipped when the victim is worth at least as much as the attacker, because
+        # that is precisely the case see_ge answers True to on its second line. The
+        # tree is identical either way; only the call is saved.
+        if (
+            move & F_CAPTURE
+            and victim_value(st, move) < PIECE_VALUE[st[move & 63] % 6]
+            and not see_ge(bb, st, move, 0)
+        ):
+            continue
         if not make_move(bb, st, stack, row, move):
             continue
         score = -quiesce(bb, st, stack, ml, tt, hh, -beta, -alpha, ply + 1, deadline)
@@ -1107,10 +1261,16 @@ def quiesce(bb, st, stack, ml, tt, hh, alpha, beta, ply, deadline):  # type: ign
         if st[ABORT]:
             return 0
         if score >= beta:
-            return beta
-        if score > alpha:
-            alpha = score
-    return alpha
+            tt_store(tt, key, 0, store_score(score, ply), LOWER, move)
+            return score
+        if score > best:
+            best = score
+            if score > alpha:
+                alpha = score
+                best_move = move
+                flag = EXACT
+    tt_store(tt, key, 0, store_score(best, ply), flag, best_move)
+    return best
 
 
 @njit(int64(*SEARCH_ARGS, int64, int64, int64, int64, boolean, float64), cache=False)
@@ -1146,9 +1306,9 @@ def negamax(bb, st, stack, ml, tt, hh, depth, alpha, beta, ply, allow_null, dead
                 return score
             if flag == LOWER:
                 if score >= beta:
-                    return beta
+                    return score
             elif score <= alpha:
-                return alpha
+                return score
 
     side = st[SIDE]
     in_check = is_attacked(bb, king_square(bb, side), side ^ 1)
@@ -1169,7 +1329,7 @@ def negamax(bb, st, stack, ml, tt, hh, depth, alpha, beta, ply, allow_null, dead
             and beta < MATE_THRESHOLD
             and static - RFP_MARGIN * depth >= beta
         ):
-            return beta
+            return static - RFP_MARGIN * depth
     # no table move means the ordering here is guesswork; a ply less keeps it cheap
     if depth >= IIR_DEPTH and table_move == 0:
         depth -= 1
@@ -1196,7 +1356,8 @@ def negamax(bb, st, stack, ml, tt, hh, depth, alpha, beta, ply, allow_null, dead
         if st[ABORT]:
             return 0
         if score >= beta:
-            return beta
+            # a mate proved past a free move is not a mate, so the bound is all it is
+            return beta if score >= MATE_THRESHOLD else score
 
     count = generate(bb, st, ml, ply, False)
     score_moves(st, ml, hh, ply, count, table_move)
@@ -1214,6 +1375,7 @@ def negamax(bb, st, stack, ml, tt, hh, depth, alpha, beta, ply, allow_null, dead
 
     best_move = 0
     flag = UPPER
+    best = -MATE
     legal = 0
     searched = 0
     for i in range(count):
@@ -1222,7 +1384,9 @@ def negamax(bb, st, stack, ml, tt, hh, depth, alpha, beta, ply, allow_null, dead
         if not make_move(bb, st, stack, row, move):
             continue
         legal += 1
-        gives_check = is_attacked(bb, king_square(bb, side ^ 1), side)
+        # Only the two quiet-move paths below read this, so a capture never needs
+        # it, and captures are ordered first and are most of the cutoffs.
+        gives_check = quiet and is_attacked(bb, king_square(bb, side ^ 1), side)
         if (
             quiet
             and searched
@@ -1289,17 +1453,19 @@ def negamax(bb, st, stack, ml, tt, hh, depth, alpha, beta, ply, allow_null, dead
                     earlier = int64(ml[ply, j])
                     if not earlier & TACTICAL:
                         history_credit(hh, side, earlier, -bonus)
-            tt_store(tt, key, depth, store_score(beta, ply), LOWER, move)
-            return beta
-        if score > alpha:
-            alpha = score
-            best_move = move
-            flag = EXACT
+            tt_store(tt, key, depth, store_score(score, ply), LOWER, move)
+            return score
+        if score > best:
+            best = score
+            if score > alpha:
+                alpha = score
+                best_move = move
+                flag = EXACT
 
     if legal == 0:
         return -MATE + ply if in_check else draw_score(ply)
-    tt_store(tt, key, depth, store_score(alpha, ply), flag, best_move)
-    return alpha
+    tt_store(tt, key, depth, store_score(best, ply), flag, best_move)
+    return best
 
 
 @njit(
