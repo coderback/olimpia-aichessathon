@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Play Olimpia: chess engine demo</title>
+<meta name="description" content="Play chess against Olimpia, a compiled alpha-beta engine in Python and Numba built for AI Chessathon. Every reply comes from the real engine running on a small server.">
+<meta name="color-scheme" content="light dark">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="wrap top">
+  <h1>Play Olimpia</h1>
+  <p class="lede">Olimpia is a classical alpha-beta chess engine in Python, compiled at startup with Numba, built for the AI Chessathon. Each reply on this page comes from that engine, searching live on a small server for up to half a second.</p>
+</header>
+
+<main class="wrap">
+  <section class="game" aria-label="Chess game">
+    <div class="board-col">
+      <div id="board" class="board" role="grid" aria-label="Chess board. Use arrow keys to move between squares and Enter to pick up and place a piece."></div>
+      <div id="promotion" class="promotion" role="dialog" aria-label="Choose a promotion piece" hidden></div>
+      <div class="controls">
+        <button id="new-white" type="button">New game as White</button>
+        <button id="new-black" type="button">New game as Black</button>
+        <button id="undo" type="button">Take back</button>
+        <button id="flip" type="button">Flip board</button>
+      </div>
+    </div>
+
+    <div class="side-col">
+      <p id="status" class="status" role="status" aria-live="polite">Your move.</p>
+      <p id="engine-note" class="engine-note"></p>
+
+      <h2>Last search</h2>
+      <dl class="stats" id="stats">
+        <div><dt>Nodes per second</dt><dd id="s-nps">–</dd></div>
+        <div><dt>Nodes</dt><dd id="s-nodes">–</dd></div>
+        <div><dt>Depth completed</dt><dd id="s-depth">–</dd></div>
+        <div><dt>Search time</dt><dd id="s-time">–</dd></div>
+        <div><dt>Root score</dt><dd id="s-score">–</dd></div>
+      </dl>
+      <p class="fine">Read from the engine's own counters after each search. The time budget is fixed at <span id="budget">500</span> ms a move, and the engine may stop earlier if it predicts the next depth will not fit.</p>
+
+      <h2>Moves</h2>
+      <ol id="moves" class="moves" aria-label="Moves played"></ol>
+    </div>
+  </section>
+
+  <section class="prose">
+    <h2>What you are playing</h2>
+    <p>The server runs the competition file, <a href="https://github.com/coderback/olimpia-aichessathon/blob/main/agent.py"><code>agent.py</code></a>, unchanged behind a small HTTP endpoint: a position goes in as FEN and a move comes back. Its board, move generator, evaluation and search are compiled by Numba when the server starts. The search is negamax with alpha-beta, iterative deepening, aspiration windows, a transposition table, principal variation search, null-move pruning, late move reductions, static exchange evaluation and more, all listed in the repo's <a href="https://github.com/coderback/olimpia-aichessathon/blob/main/NOTES.md">build notes</a>.</p>
+
+    <h2>This is not its tournament strength</h2>
+    <ul>
+      <li>Rated games gave it 120 s + 0.5 s a game on one core, and a slowest move of a few seconds. Here it gets at most 0.5 s a move on a small shared container.</li>
+      <li>Requests are stateless. Every move starts a fresh search with an empty transposition table and no memory of earlier positions, so it cannot see repetitions from earlier in your game. The page enforces the draw rules itself.</li>
+      <li>The server sleeps when idle to save cost, so the first move after a quiet spell waits while the search compiles again.</li>
+    </ul>
+
+    <h2>Results from the repo's notes</h2>
+    <div class="table-wrap">
+      <table>
+        <caption>Measured by the team, as recorded in NOTES.md. The Elo rows are head-to-head matches between builds, not ratings against the field.</caption>
+        <thead><tr><th scope="col">Measure</th><th scope="col">Result</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">Search speed, pure Python to compiled</th><td>about 13,000 to 1.4–2.0 million nodes per second</td></tr>
+          <tr><th scope="row">Time management change (build K vs H)</th><td>+61 Elo, 95% CI [+35, +88], 513 games at 120 s + 0.5 s, sequential test accepted</td></tr>
+          <tr><th scope="row">SEE, table in quiescence, fail-soft (build L vs K)</th><td>+53 Elo, 95% CI [+31, +76], 629 games, sequential test accepted</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="fine">Tournament games are not replayed here: the board above is always a live game. The repo forks <a href="https://github.com/advitrocks9/aichessathon-starter">aichessathon-starter</a> (MIT licence, Advit Arora). <a href="https://github.com/coderback/olimpia-aichessathon">Source on GitHub</a>, including <a href="https://github.com/coderback/olimpia-aichessathon/tree/live-demo/demo">this demo</a>. The board uses <a href="https://github.com/jhlywa/chess.js">chess.js</a> for the rules.</p>
+  </section>
+</main>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>
