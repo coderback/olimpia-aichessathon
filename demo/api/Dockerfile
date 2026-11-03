@@ -14,7 +14,7 @@ WORKDIR /app
 # use them. Versions match pyproject.toml.
 RUN pip install --no-cache-dir chess==1.11.2 numpy==2.5.2 numba==0.67.0
 
-# agent.py is byte-identical to the repo's. It has numba compile the search at import, so every
+# agent.py is the repo's file, unchanged. It has numba compile the search at import, so every
 # cold start spends its first stretch compiling. numba's on-disk cache cannot help: a cached
 # copy of the recursive negamax fails to load (LLVM "Symbol not found").
 COPY agent.py server.py LICENSE /app/
