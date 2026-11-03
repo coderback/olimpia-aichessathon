@@ -3,7 +3,7 @@
 import { Chess } from './vendor/chess.js';
 
 const API = 'https://olimpia-api-production.up.railway.app';
-const WAKE_TIMEOUT_S = 240;      // how long to keep showing "waking" before giving up
+const WAKE_TIMEOUT_S = 180;      // how long to keep showing "waking" before giving up
 const REQUEST_TIMEOUT_MS = 25000;
 
 const GLYPH = { k: '♚', q: '♛', r: '♜', b: '♝', n: '♞', p: '♟' };
@@ -248,7 +248,7 @@ function wakeEngine() {
         // the platform is still bringing the container up
       }
       if (seconds > WAKE_TIMEOUT_S) break;
-      noteEl.textContent = `Waking the engine: ${seconds} s. It sleeps when nobody is playing, and compiles its search on the way up, which can take a minute or two.`;
+      noteEl.textContent = `Waking the engine: ${seconds} s. It sleeps when nobody is playing, and compiles its search on the way up, which usually takes about 20 seconds.`;
       if (thinking) setStatus(`Waking the engine (${seconds} s). Your move is in, and Olimpia replies once it is up.`, 'waiting');
       await wait(2000);
     }
